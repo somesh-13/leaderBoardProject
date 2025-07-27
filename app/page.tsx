@@ -3,10 +3,17 @@ import TierBadge from '@/components/TierBadge'
 
 export default function Home() {
   const mockStats = {
-    topUser: { username: 'TradeMaster', tier: 'S' as const, return: 42.5 },
-    sp500: { value: 4783.45, change: 1.2 },
-    nasdaq: { value: 15234.78, change: -0.8 }
+    topUser: { username: 'Matt', tier: 'S' as const, return: 45.2 }
   }
+
+  const marketAssets = [
+    { name: 'S&P 500', symbol: 'SPX', value: 4783.45, change: 1.2, type: 'Index' },
+    { name: 'NASDAQ', symbol: 'IXIC', value: 15234.78, change: -0.8, type: 'Index' },
+    { name: 'NIFTY 50', symbol: 'NSEI', value: 19674.25, change: 0.5, type: 'Index' },
+    { name: 'Bitcoin', symbol: 'BTC', value: 43250.00, change: 2.8, type: 'Crypto' },
+    { name: 'Ethereum', symbol: 'ETH', value: 2640.75, change: -1.2, type: 'Crypto' },
+    { name: 'Gold', symbol: 'XAU', value: 2012.30, change: 0.3, type: 'Commodity' }
+  ]
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -29,8 +36,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+      {/* Market Overview */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
         {/* Top S-Tier User */}
         <div className="card text-center">
           <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">
@@ -50,40 +57,52 @@ export default function Home() {
           </p>
         </div>
 
-        {/* S&P 500 */}
-        <div className="card text-center">
-          <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">
-            S&P 500
+        {/* Market Assets Table */}
+        <div className="lg:col-span-2 card">
+          <h3 className="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-300">
+            Market Overview
           </h3>
-          <p className="text-3xl font-bold mb-1">
-            {mockStats.sp500.value.toLocaleString()}
-          </p>
-          <p className={`text-lg font-semibold ${
-            mockStats.sp500.change >= 0 ? 'text-gain' : 'text-loss'
-          }`}>
-            {mockStats.sp500.change >= 0 ? '+' : ''}{mockStats.sp500.change}%
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Today
-          </p>
-        </div>
-
-        {/* NASDAQ */}
-        <div className="card text-center">
-          <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">
-            NASDAQ
-          </h3>
-          <p className="text-3xl font-bold mb-1">
-            {mockStats.nasdaq.value.toLocaleString()}
-          </p>
-          <p className={`text-lg font-semibold ${
-            mockStats.nasdaq.change >= 0 ? 'text-gain' : 'text-loss'
-          }`}>
-            {mockStats.nasdaq.change >= 0 ? '+' : ''}{mockStats.nasdaq.change}%
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Today
-          </p>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Asset</th>
+                  <th className="text-right py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Price</th>
+                  <th className="text-right py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Change</th>
+                  <th className="text-right py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {marketAssets.map((asset, index) => (
+                  <tr key={index} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    <td className="py-3">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">{asset.name}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{asset.symbol}</p>
+                      </div>
+                    </td>
+                    <td className="py-3 text-right font-medium text-gray-900 dark:text-white">
+                      {asset.value.toLocaleString()}
+                    </td>
+                    <td className={`py-3 text-right font-semibold ${
+                      asset.change >= 0 ? 'text-gain' : 'text-loss'
+                    }`}>
+                      {asset.change >= 0 ? '+' : ''}{asset.change}%
+                    </td>
+                    <td className="py-3 text-right">
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        asset.type === 'Index' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' :
+                        asset.type === 'Crypto' ? 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200' :
+                        'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                      }`}>
+                        {asset.type}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
