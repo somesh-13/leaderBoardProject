@@ -133,36 +133,50 @@ export default function UserProfile() {
     totalReturn: user.totalReturn,
     positions: []
   })
+  
+  const [isLoadingPrices, setIsLoadingPrices] = useState(true)
 
   useEffect(() => {
     const fetchPortfolioPrices = async () => {
-      const positions = await Promise.all(
-        user.portfolio.map(async (symbol: string) => {
-          const { price } = await getPriceWithFallback(symbol)
-          const shares = Math.floor(50 + Math.random() * 100)
-          const avgPrice = price * (0.85 + Math.random() * 0.3)
-          const returnPct = ((price - avgPrice) / avgPrice) * 100
-          
-          return {
-            symbol,
-            shares,
-            avgPrice: Number(avgPrice.toFixed(2)),
-            currentPrice: price,
-            return: Number(returnPct.toFixed(2))
-          }
-        })
-      )
+      if (!user.portfolio || user.portfolio.length === 0) {
+        setIsLoadingPrices(false)
+        return
+      }
+      
+      setIsLoadingPrices(true)
+      
+      try {
+        const positions = await Promise.all(
+          user.portfolio.map(async (symbol: string, index: number) => {
+            const { price } = await getPriceWithFallback(symbol)
+            // Use deterministic values based on symbol to avoid infinite loops
+            const shares = 50 + (symbol.charCodeAt(0) % 100)
+            const avgPrice = price * (0.85 + (symbol.charCodeAt(1) % 30) / 100)
+            const returnPct = ((price - avgPrice) / avgPrice) * 100
+            
+            return {
+              symbol,
+              shares,
+              avgPrice: Number(avgPrice.toFixed(2)),
+              currentPrice: price,
+              return: Number(returnPct.toFixed(2))
+            }
+          })
+        )
 
-      setPortfolio(prev => ({
-        ...prev,
-        positions
-      }))
+        setPortfolio(prev => ({
+          ...prev,
+          positions
+        }))
+      } catch (error) {
+        console.error('Error fetching portfolio prices:', error)
+      } finally {
+        setIsLoadingPrices(false)
+      }
     }
 
-    if (user.portfolio && user.portfolio.length > 0) {
-      fetchPortfolioPrices()
-    }
-  }, [user.portfolio])
+    fetchPortfolioPrices()
+  }, [username])
 
   const mockStrategies: Strategy[] = [
     {
@@ -297,19 +311,27 @@ export default function UserProfile() {
                       </tr>
                     </thead>
                     <tbody>
-                      {portfolio.positions.map((position) => (
-                        <tr key={position.symbol} className="border-b border-gray-100 dark:border-gray-800">
-                          <td className="py-3 font-medium">{position.symbol}</td>
-                          <td className="py-3">{position.shares}</td>
-                          <td className="py-3">${position.avgPrice}</td>
-                          <td className="py-3">${position.currentPrice}</td>
-                          <td className={`py-3 font-semibold ${
-                            position.return >= 0 ? 'text-gain' : 'text-loss'
-                          }`}>
-                            {position.return >= 0 ? '+' : ''}{position.return}%
+                      {isLoadingPrices ? (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-gray-500 dark:text-gray-400">
+                            Loading portfolio data...
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        portfolio.positions.map((position) => (
+                          <tr key={position.symbol} className="border-b border-gray-100 dark:border-gray-800">
+                            <td className="py-3 font-medium">{position.symbol}</td>
+                            <td className="py-3">{position.shares}</td>
+                            <td className="py-3">${position.avgPrice}</td>
+                            <td className="py-3">${position.currentPrice}</td>
+                            <td className={`py-3 font-semibold ${
+                              position.return >= 0 ? 'text-gain' : 'text-loss'
+                            }`}>
+                              {position.return >= 0 ? '+' : ''}{position.return}%
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>

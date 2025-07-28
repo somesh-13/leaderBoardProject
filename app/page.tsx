@@ -22,10 +22,18 @@ export default function Home() {
   useEffect(() => {
     const fetchMarketData = async () => {
       const symbols = ['SPY', 'QQQ', 'AAPL', 'TSLA', 'MSFT', 'META']
+      const assetTemplates = [
+        { name: 'S&P 500', symbol: 'SPY', type: 'Index' },
+        { name: 'NASDAQ', symbol: 'QQQ', type: 'Index' },
+        { name: 'Apple', symbol: 'AAPL', type: 'Stock' },
+        { name: 'Tesla', symbol: 'TSLA', type: 'Stock' },
+        { name: 'Microsoft', symbol: 'MSFT', type: 'Stock' },
+        { name: 'Meta', symbol: 'META', type: 'Stock' }
+      ]
+      
       const updatedAssets = await Promise.all(
-        marketAssets.map(async (asset, index) => {
-          const symbol = symbols[index]
-          const { price, change } = await getPriceWithFallback(symbol)
+        assetTemplates.map(async (asset, index) => {
+          const { price, change } = await getPriceWithFallback(asset.symbol)
           return {
             ...asset,
             value: price,
