@@ -32,51 +32,131 @@ export default function UserProfile() {
   const username = params.username as string
   const [activeTab, setActiveTab] = useState<'portfolio' | 'strategies' | 'performance'>('portfolio')
 
-  const mockUsers: Record<string, any> = {
-    'TradeMaster': {
-      username: 'TradeMaster',
+  const leaderboardUsers: Record<string, any> = {
+    'Matt': {
+      username: 'Matt',
       tier: 'S' as const,
       rank: 1,
-      totalReturn: 42.5,
-      followers: 1247,
-      following: 89
+      totalReturn: 45.2,
+      followers: 1847,
+      following: 67,
+      sector: 'Technology',
+      portfolio: ['RKLB', 'AMZN', 'SOFI', 'ASTS', 'BRK.B', 'CELH', 'OSCR', 'EOG', 'BROS', 'ABCL']
     },
-    'StockGuru': {
-      username: 'StockGuru', 
+    'Amit': {
+      username: 'Amit',
       tier: 'S' as const,
       rank: 2,
-      totalReturn: 38.2,
-      followers: 892,
-      following: 156
+      totalReturn: 42.8,
+      followers: 1523,
+      following: 89,
+      sector: 'Technology',
+      portfolio: ['PLTR', 'HOOD', 'TSLA', 'AMD', 'JPM', 'NBIS', 'GRAB', 'AAPL', 'V', 'DUOL']
+    },
+    'Steve': {
+      username: 'Steve',
+      tier: 'S' as const,
+      rank: 3,
+      totalReturn: 39.5,
+      followers: 1298,
+      following: 124,
+      sector: 'Technology',
+      portfolio: ['META', 'MSTR', 'MSFT', 'HIMS', 'AVGO', 'CRWD', 'NFLX', 'CRM', 'PYPL', 'MU']
+    },
+    'Tannor': {
+      username: 'Tannor',
+      tier: 'S' as const,
+      rank: 4,
+      totalReturn: 37.1,
+      followers: 1156,
+      following: 98,
+      sector: 'Technology',
+      portfolio: ['NVDA', 'NU', 'NOW', 'MELI', 'SHOP', 'TTD', 'ASML', 'APP', 'COIN', 'TSM']
+    },
+    'Kris': {
+      username: 'Kris',
+      tier: 'S' as const,
+      rank: 5,
+      totalReturn: 34.7,
+      followers: 987,
+      following: 145,
+      sector: 'Healthcare',
+      portfolio: ['UNH', 'GOOGL', 'MRVL', 'AXON', 'ELF', 'ORCL', 'CSCO', 'LLY', 'NVO', 'TTWO']
+    },
+    'TradeMaster': {
+      username: 'TradeMaster',
+      tier: 'A' as const,
+      rank: 6,
+      totalReturn: 22.5,
+      followers: 634,
+      following: 203,
+      sector: 'Technology',
+      portfolio: ['AAPL']
+    },
+    'StockGuru': {
+      username: 'StockGuru',
+      tier: 'A' as const,
+      rank: 7,
+      totalReturn: 18.2,
+      followers: 456,
+      following: 156,
+      sector: 'Technology',
+      portfolio: ['TSLA']
     },
     'InvestPro': {
       username: 'InvestPro',
-      tier: 'S' as const, 
-      rank: 3,
-      totalReturn: 35.7,
-      followers: 634,
-      following: 203
+      tier: 'A' as const,
+      rank: 8,
+      totalReturn: 15.7,
+      followers: 298,
+      following: 187,
+      sector: 'Healthcare',
+      portfolio: ['JNJ']
     }
   }
 
-  const user = mockUsers[username] || {
+  const user = leaderboardUsers[username] || {
     username: username,
     tier: 'C' as const,
     rank: 99,
     totalReturn: 5.2,
     followers: 12,
-    following: 45
+    following: 45,
+    sector: 'Mixed',
+    portfolio: ['SPY', 'QQQ', 'BND']
+  }
+
+  const generateMockPrices = (symbol: string) => {
+    const basePrices: Record<string, number> = {
+      'RKLB': 15.23, 'AMZN': 142.65, 'SOFI': 8.45, 'ASTS': 12.89, 'BRK.B': 345.67, 'CELH': 67.34, 'OSCR': 23.45, 'EOG': 123.78, 'BROS': 34.56, 'ABCL': 18.90,
+      'PLTR': 18.76, 'HOOD': 14.23, 'TSLA': 245.67, 'AMD': 89.34, 'JPM': 145.23, 'NBIS': 32.17, 'GRAB': 3.45, 'AAPL': 175.23, 'V': 234.56, 'DUOL': 156.78,
+      'META': 298.45, 'MSTR': 189.67, 'MSFT': 325.12, 'HIMS': 12.34, 'AVGO': 456.78, 'CRWD': 234.56, 'NFLX': 387.65, 'CRM': 198.45, 'PYPL': 67.89, 'MU': 89.12,
+      'NVDA': 456.78, 'NU': 8.90, 'NOW': 567.89, 'MELI': 1234.56, 'SHOP': 67.89, 'TTD': 78.45, 'ASML': 678.90, 'APP': 45.67, 'COIN': 123.45, 'TSM': 89.67,
+      'UNH': 456.78, 'GOOGL': 134.56, 'MRVL': 56.78, 'AXON': 189.45, 'ELF': 123.45, 'ORCL': 98.76, 'CSCO': 45.67, 'LLY': 567.89, 'NVO': 98.45, 'TTWO': 134.56,
+      'JNJ': 156.78, 'SPY': 412.34, 'QQQ': 345.67, 'BND': 78.90
+    }
+    const basePrice = basePrices[symbol] || 100.00
+    const avgPrice = basePrice * (0.85 + Math.random() * 0.3)
+    const currentPrice = basePrice * (0.95 + Math.random() * 0.1)
+    const returnPct = ((currentPrice - avgPrice) / avgPrice) * 100
+    return { avgPrice: Number(avgPrice.toFixed(2)), currentPrice: Number(currentPrice.toFixed(2)), return: Number(returnPct.toFixed(2)) }
   }
 
   const mockPortfolio: Portfolio = {
-    totalValue: user.rank === 1 ? 125450.32 : user.rank === 2 ? 98234.11 : 67123.45,
-    dayChange: user.rank === 1 ? 2.45 : user.rank === 2 ? 1.23 : -0.34,
+    totalValue: user.rank <= 5 ? 125450.32 - (user.rank - 1) * 15000 : 67123.45 - (user.rank - 6) * 5000,
+    dayChange: user.rank <= 5 ? 2.45 - (user.rank - 1) * 0.5 : 1.23 - (user.rank - 6) * 0.3,
     totalReturn: user.totalReturn,
-    positions: [
-      { symbol: 'AAPL', shares: 50, avgPrice: 175.23, currentPrice: 182.45, return: 4.12 },
-      { symbol: 'TSLA', shares: 25, avgPrice: 245.67, currentPrice: 268.90, return: 9.45 },
-      { symbol: 'MSFT', shares: 40, avgPrice: 325.12, currentPrice: 341.78, return: 5.12 },
-    ]
+    positions: user.portfolio.map((symbol: string, index: number) => {
+      const prices = generateMockPrices(symbol)
+      const shares = Math.floor(50 + Math.random() * 100)
+      return {
+        symbol,
+        shares,
+        avgPrice: prices.avgPrice,
+        currentPrice: prices.currentPrice,
+        return: prices.return
+      }
+    })
   }
 
   const mockStrategies: Strategy[] = [
