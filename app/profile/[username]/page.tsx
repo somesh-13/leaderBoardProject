@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import TierBadge from '@/components/TierBadge'
-import { getPriceWithFallback } from '@/lib/finnhub'
+import { getPriceWithFallback, getMultipleHistoricalPrices } from '@/lib/finnhub'
 
 interface Strategy {
   id: string
@@ -24,7 +24,9 @@ interface Portfolio {
     shares: number
     avgPrice: number
     currentPrice: number
+    historicalPrice?: number | null
     return: number
+    performanceSinceDate?: number
   }[]
 }
 
@@ -135,6 +137,13 @@ export default function UserProfile() {
   })
   
   const [isLoadingPrices, setIsLoadingPrices] = useState(true)
+  const [performanceSinceDate, setPerformanceSinceDate] = useState(() => {
+    // Default to 30 days ago
+    const date = new Date()
+    date.setDate(date.getDate() - 30)
+    return date.toISOString().split('T')[0]
+  })
+  const [isLoadingHistorical, setIsLoadingHistorical] = useState(false)
 
   useEffect(() => {
     const fetchPortfolioPrices = async () => {
@@ -177,6 +186,45 @@ export default function UserProfile() {
 
     fetchPortfolioPrices()
   }, [username])
+
+  // Fetch historical prices when date changes
+  useEffect(() => {
+    const fetchHistoricalPrices = async () => {
+      if (!user.portfolio || user.portfolio.length === 0 || portfolio.positions.length === 0) {
+        return
+      }
+      
+      setIsLoadingHistorical(true)
+      
+      try {
+        const historicalPrices = await getMultipleHistoricalPrices(user.portfolio, performanceSinceDate)
+        
+        setPortfolio(prev => ({
+          ...prev,
+          positions: prev.positions.map(position => {
+            const historicalPrice = historicalPrices[position.symbol]
+            const performanceSinceDate = historicalPrice 
+              ? ((position.currentPrice - historicalPrice) / historicalPrice) * 100
+              : undefined
+              
+            return {
+              ...position,
+              historicalPrice,
+              performanceSinceDate
+            }
+          })
+        }))
+      } catch (error) {
+        console.error('Error fetching historical prices:', error)
+      } finally {
+        setIsLoadingHistorical(false)
+      }
+    }
+
+    if (portfolio.positions.length > 0) {
+      fetchHistoricalPrices()
+    }
+  }, [performanceSinceDate, portfolio.positions.length])
 
   const mockStrategies: Strategy[] = [
     {
@@ -298,7 +346,25 @@ export default function UserProfile() {
               </div>
 
               <div className="card">
-                <h3 className="text-lg font-semibold mb-4">Positions</h3>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                  <h3 className="text-lg font-semibold">Positions</h3>
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="performanceDate" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Performance Since:
+                    </label>
+                    <input
+                      id="performanceDate"
+                      type="date"
+                      value={performanceSinceDate}
+                      onChange={(e) => setPerformanceSinceDate(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                    {isLoadingHistorical && (
+                      <div className="text-xs text-gray-500">Loading...</div>
+                    )}
+                  </div>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full">
                     <thead>
@@ -307,13 +373,15 @@ export default function UserProfile() {
                         <th className="text-left py-2">Shares</th>
                         <th className="text-left py-2">Avg Price</th>
                         <th className="text-left py-2">Current</th>
-                        <th className="text-left py-2">Return</th>
+                        <th className="text-left py-2">Price on {new Date(performanceSinceDate).toLocaleDateString()}</th>
+                        <th className="text-left py-2">All-Time Return</th>
+                        <th className="text-left py-2">Since {new Date(performanceSinceDate).toLocaleDateString()}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {isLoadingPrices ? (
                         <tr>
-                          <td colSpan={5} className="py-8 text-center text-gray-500 dark:text-gray-400">
+                          <td colSpan={7} className="py-8 text-center text-gray-500 dark:text-gray-400">
                             Loading portfolio data...
                           </td>
                         </tr>
@@ -324,10 +392,32 @@ export default function UserProfile() {
                             <td className="py-3">{position.shares}</td>
                             <td className="py-3">${position.avgPrice}</td>
                             <td className="py-3">${position.currentPrice}</td>
+                            <td className="py-3">
+                              {position.historicalPrice ? (
+                                `$${position.historicalPrice.toFixed(2)}`
+                              ) : (
+                                <span className="text-gray-400 text-sm">
+                                  {isLoadingHistorical ? 'Loading...' : 'N/A'}
+                                </span>
+                              )}
+                            </td>
                             <td className={`py-3 font-semibold ${
                               position.return >= 0 ? 'text-gain' : 'text-loss'
                             }`}>
                               {position.return >= 0 ? '+' : ''}{position.return}%
+                            </td>
+                            <td className={`py-3 font-semibold ${
+                              position.performanceSinceDate !== undefined
+                                ? position.performanceSinceDate >= 0 ? 'text-gain' : 'text-loss'
+                                : ''
+                            }`}>
+                              {position.performanceSinceDate !== undefined ? (
+                                `${position.performanceSinceDate >= 0 ? '+' : ''}${position.performanceSinceDate.toFixed(2)}%`
+                              ) : (
+                                <span className="text-gray-400 text-sm">
+                                  {isLoadingHistorical ? 'Loading...' : 'N/A'}
+                                </span>
+                              )}
                             </td>
                           </tr>
                         ))

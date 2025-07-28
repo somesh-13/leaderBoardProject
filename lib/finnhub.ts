@@ -190,6 +190,50 @@ export const mockPrices: Record<string, Partial<FinnhubQuote>> = {
   'BND': { c: 78.90, dp: 0.1 }
 }
 
+// Get historical price for a specific date
+export async function getHistoricalPrice(symbol: string, date: string): Promise<number | null> {
+  const targetDate = new Date(date)
+  const targetTimestamp = Math.floor(targetDate.getTime() / 1000)
+  
+  // Get a range around the target date (in case of weekends/holidays)
+  const startDate = new Date(targetDate)
+  startDate.setDate(startDate.getDate() - 5)
+  const endDate = new Date(targetDate)
+  endDate.setDate(endDate.getDate() + 1)
+  
+  const startTimestamp = Math.floor(startDate.getTime() / 1000)
+  const endTimestamp = Math.floor(endDate.getTime() / 1000)
+  
+  const candles = await getHistoricalCandles(symbol, startTimestamp, endTimestamp, 'D')
+  
+  if (candles && candles.c && candles.t && candles.c.length > 0) {
+    // Find the closest date to our target
+    let closestIndex = 0
+    let closestDiff = Math.abs(candles.t[0] - targetTimestamp)
+    
+    for (let i = 1; i < candles.t.length; i++) {
+      const diff = Math.abs(candles.t[i] - targetTimestamp)
+      if (diff < closestDiff) {
+        closestDiff = diff
+        closestIndex = i
+      }
+    }
+    
+    return candles.c[closestIndex]
+  }
+  
+  // Fallback to mock data with date-based variation
+  const mockData = mockPrices[symbol]
+  if (mockData?.c) {
+    // Add some historical variation based on how far back the date is
+    const daysAgo = Math.floor((Date.now() - targetDate.getTime()) / (1000 * 60 * 60 * 24))
+    const variation = (Math.sin(daysAgo / 10) * 0.1) + (daysAgo * 0.001) // Some historical drift
+    return mockData.c * (1 - variation)
+  }
+  
+  return null
+}
+
 // Get price with fallback to mock data
 export async function getPriceWithFallback(symbol: string): Promise<{ price: number; change: number }> {
   const liveData = await getLivePrice(symbol)
@@ -207,4 +251,37 @@ export async function getPriceWithFallback(symbol: string): Promise<{ price: num
     price: mockData?.c || 100,
     change: mockData?.dp || 0
   }
+}
+
+// Get multiple historical prices at once
+export async function getMultipleHistoricalPrices(symbols: string[], date: string): Promise<Record<string, number | null>> {
+  const results: Record<string, number | null> = {}
+  
+  // Use Promise.all for parallel requests but with rate limiting
+  const batches = []
+  const batchSize = 3 // Smaller batch size for historical data
+  
+  for (let i = 0; i < symbols.length; i += batchSize) {
+    const batch = symbols.slice(i, i + batchSize)
+    batches.push(batch)
+  }
+  
+  for (const batch of batches) {
+    const batchPromises = batch.map(async (symbol) => {
+      const price = await getHistoricalPrice(symbol, date)
+      return { symbol, price }
+    })
+    
+    const batchResults = await Promise.all(batchPromises)
+    batchResults.forEach(({ symbol, price }) => {
+      results[symbol] = price
+    })
+    
+    // Small delay between batches to respect rate limits
+    if (batches.indexOf(batch) < batches.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 200))
+    }
+  }
+  
+  return results
 }
