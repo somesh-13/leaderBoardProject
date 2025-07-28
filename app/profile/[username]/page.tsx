@@ -138,10 +138,8 @@ export default function UserProfile() {
   
   const [isLoadingPrices, setIsLoadingPrices] = useState(true)
   const [performanceSinceDate, setPerformanceSinceDate] = useState(() => {
-    // Default to 30 days ago
-    const date = new Date()
-    date.setDate(date.getDate() - 30)
-    return date.toISOString().split('T')[0]
+    // Default to June 16, 2024 for demo purposes
+    return '2024-06-16'
   })
   const [isLoadingHistorical, setIsLoadingHistorical] = useState(false)
 
