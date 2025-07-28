@@ -1,4 +1,4 @@
-import axios from 'axios'
+// Using fetch API instead of axios for better Next.js compatibility
 
 const API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY
 
@@ -52,10 +52,22 @@ export async function fetchFinnhubEndpoint<T>(
   }
 
   try {
-    const url = `https://finnhub.io/api/v1/${endpoint}`
+    const url = new URL(`https://finnhub.io/api/v1/${endpoint}`)
     const fullParams = { ...params, token: API_KEY }
-    const response = await axios.get<T>(url, { params: fullParams })
-    return response.data
+    
+    // Add parameters to URL
+    Object.entries(fullParams).forEach(([key, value]) => {
+      url.searchParams.append(key, value)
+    })
+    
+    const response = await fetch(url.toString())
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    return data as T
   } catch (error) {
     console.error(`Finnhub API error for ${endpoint}:`, error)
     return null
