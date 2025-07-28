@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import TierBadge from '@/components/TierBadge'
+import { getPriceWithFallback } from '@/lib/finnhub'
 
 interface Strategy {
   id: string
@@ -126,38 +127,42 @@ export default function UserProfile() {
     portfolio: ['SPY', 'QQQ', 'BND']
   }
 
-  const generateMockPrices = (symbol: string) => {
-    const basePrices: Record<string, number> = {
-      'RKLB': 15.23, 'AMZN': 142.65, 'SOFI': 8.45, 'ASTS': 12.89, 'BRK.B': 345.67, 'CELH': 67.34, 'OSCR': 23.45, 'EOG': 123.78, 'BROS': 34.56, 'ABCL': 18.90,
-      'PLTR': 18.76, 'HOOD': 14.23, 'TSLA': 245.67, 'AMD': 89.34, 'JPM': 145.23, 'NBIS': 32.17, 'GRAB': 3.45, 'AAPL': 175.23, 'V': 234.56, 'DUOL': 156.78,
-      'META': 298.45, 'MSTR': 189.67, 'MSFT': 325.12, 'HIMS': 12.34, 'AVGO': 456.78, 'CRWD': 234.56, 'NFLX': 387.65, 'CRM': 198.45, 'PYPL': 67.89, 'MU': 89.12,
-      'NVDA': 456.78, 'NU': 8.90, 'NOW': 567.89, 'MELI': 1234.56, 'SHOP': 67.89, 'TTD': 78.45, 'ASML': 678.90, 'APP': 45.67, 'COIN': 123.45, 'TSM': 89.67,
-      'UNH': 456.78, 'GOOGL': 134.56, 'MRVL': 56.78, 'AXON': 189.45, 'ELF': 123.45, 'ORCL': 98.76, 'CSCO': 45.67, 'LLY': 567.89, 'NVO': 98.45, 'TTWO': 134.56,
-      'JNJ': 156.78, 'SPY': 412.34, 'QQQ': 345.67, 'BND': 78.90
-    }
-    const basePrice = basePrices[symbol] || 100.00
-    const avgPrice = basePrice * (0.85 + Math.random() * 0.3)
-    const currentPrice = basePrice * (0.95 + Math.random() * 0.1)
-    const returnPct = ((currentPrice - avgPrice) / avgPrice) * 100
-    return { avgPrice: Number(avgPrice.toFixed(2)), currentPrice: Number(currentPrice.toFixed(2)), return: Number(returnPct.toFixed(2)) }
-  }
-
-  const mockPortfolio: Portfolio = {
+  const [portfolio, setPortfolio] = useState<Portfolio>({
     totalValue: user.rank <= 5 ? 125450.32 - (user.rank - 1) * 15000 : 67123.45 - (user.rank - 6) * 5000,
     dayChange: user.rank <= 5 ? 2.45 - (user.rank - 1) * 0.5 : 1.23 - (user.rank - 6) * 0.3,
     totalReturn: user.totalReturn,
-    positions: user.portfolio.map((symbol: string, index: number) => {
-      const prices = generateMockPrices(symbol)
-      const shares = Math.floor(50 + Math.random() * 100)
-      return {
-        symbol,
-        shares,
-        avgPrice: prices.avgPrice,
-        currentPrice: prices.currentPrice,
-        return: prices.return
-      }
-    })
-  }
+    positions: []
+  })
+
+  useEffect(() => {
+    const fetchPortfolioPrices = async () => {
+      const positions = await Promise.all(
+        user.portfolio.map(async (symbol: string) => {
+          const { price } = await getPriceWithFallback(symbol)
+          const shares = Math.floor(50 + Math.random() * 100)
+          const avgPrice = price * (0.85 + Math.random() * 0.3)
+          const returnPct = ((price - avgPrice) / avgPrice) * 100
+          
+          return {
+            symbol,
+            shares,
+            avgPrice: Number(avgPrice.toFixed(2)),
+            currentPrice: price,
+            return: Number(returnPct.toFixed(2))
+          }
+        })
+      )
+
+      setPortfolio(prev => ({
+        ...prev,
+        positions
+      }))
+    }
+
+    if (user.portfolio && user.portfolio.length > 0) {
+      fetchPortfolioPrices()
+    }
+  }, [user.portfolio])
 
   const mockStrategies: Strategy[] = [
     {
@@ -253,7 +258,7 @@ export default function UserProfile() {
                     Total Value
                   </h3>
                   <p className="text-2xl font-bold">
-                    ${mockPortfolio.totalValue.toLocaleString()}
+                    ${portfolio.totalValue.toLocaleString()}
                   </p>
                 </div>
                 <div className="card text-center">
@@ -261,9 +266,9 @@ export default function UserProfile() {
                     Day Change
                   </h3>
                   <p className={`text-2xl font-bold ${
-                    mockPortfolio.dayChange >= 0 ? 'text-gain' : 'text-loss'
+                    portfolio.dayChange >= 0 ? 'text-gain' : 'text-loss'
                   }`}>
-                    {mockPortfolio.dayChange >= 0 ? '+' : ''}{mockPortfolio.dayChange}%
+                    {portfolio.dayChange >= 0 ? '+' : ''}{portfolio.dayChange}%
                   </p>
                 </div>
                 <div className="card text-center">
@@ -271,9 +276,9 @@ export default function UserProfile() {
                     Total Return
                   </h3>
                   <p className={`text-2xl font-bold ${
-                    mockPortfolio.totalReturn >= 0 ? 'text-gain' : 'text-loss'
+                    portfolio.totalReturn >= 0 ? 'text-gain' : 'text-loss'
                   }`}>
-                    {mockPortfolio.totalReturn >= 0 ? '+' : ''}{mockPortfolio.totalReturn}%
+                    {portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturn}%
                   </p>
                 </div>
               </div>
@@ -292,7 +297,7 @@ export default function UserProfile() {
                       </tr>
                     </thead>
                     <tbody>
-                      {mockPortfolio.positions.map((position) => (
+                      {portfolio.positions.map((position) => (
                         <tr key={position.symbol} className="border-b border-gray-100 dark:border-gray-800">
                           <td className="py-3 font-medium">{position.symbol}</td>
                           <td className="py-3">{position.shares}</td>

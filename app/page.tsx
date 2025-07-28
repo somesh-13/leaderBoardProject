@@ -1,19 +1,43 @@
+'use client'
+
 import Link from 'next/link'
 import TierBadge from '@/components/TierBadge'
+import { useState, useEffect } from 'react'
+import { getPriceWithFallback } from '@/lib/finnhub'
 
 export default function Home() {
   const mockStats = {
     topUser: { username: 'Matt', tier: 'S' as const, return: 45.2 }
   }
 
-  const marketAssets = [
-    { name: 'S&P 500', symbol: 'SPX', value: 4783.45, change: 1.2, type: 'Index' },
-    { name: 'NASDAQ', symbol: 'IXIC', value: 15234.78, change: -0.8, type: 'Index' },
-    { name: 'NIFTY 50', symbol: 'NSEI', value: 19674.25, change: 0.5, type: 'Index' },
-    { name: 'Bitcoin', symbol: 'BTC', value: 43250.00, change: 2.8, type: 'Crypto' },
-    { name: 'Ethereum', symbol: 'ETH', value: 2640.75, change: -1.2, type: 'Crypto' },
-    { name: 'Gold', symbol: 'XAU', value: 2012.30, change: 0.3, type: 'Commodity' }
-  ]
+  const [marketAssets, setMarketAssets] = useState([
+    { name: 'S&P 500', symbol: 'SPY', value: 4783.45, change: 1.2, type: 'Index' },
+    { name: 'NASDAQ', symbol: 'QQQ', value: 15234.78, change: -0.8, type: 'Index' },
+    { name: 'Apple', symbol: 'AAPL', value: 175.23, change: 0.5, type: 'Stock' },
+    { name: 'Tesla', symbol: 'TSLA', value: 245.67, change: 2.8, type: 'Stock' },
+    { name: 'Microsoft', symbol: 'MSFT', value: 325.12, change: -1.2, type: 'Stock' },
+    { name: 'Meta', symbol: 'META', value: 298.45, change: 0.3, type: 'Stock' }
+  ])
+
+  useEffect(() => {
+    const fetchMarketData = async () => {
+      const symbols = ['SPY', 'QQQ', 'AAPL', 'TSLA', 'MSFT', 'META']
+      const updatedAssets = await Promise.all(
+        marketAssets.map(async (asset, index) => {
+          const symbol = symbols[index]
+          const { price, change } = await getPriceWithFallback(symbol)
+          return {
+            ...asset,
+            value: price,
+            change: change
+          }
+        })
+      )
+      setMarketAssets(updatedAssets)
+    }
+
+    fetchMarketData()
+  }, [])
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
