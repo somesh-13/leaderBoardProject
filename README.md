@@ -1,6 +1,6 @@
-# Stock Trading Game
+# Wall Street Bets
 
-A web-based stock trading game inspired by the FIFA Companion App, featuring a leaderboard, tiered rankings, strategy testing via a chat terminal, and user profiles with tokenized investment options.
+A web-based trading platform inspired by the Wall Street Bets community, featuring a leaderboard, tiered rankings, strategy testing via a chat terminal, and user profiles with tokenized investment options.
 
 ## Features
 
@@ -37,7 +37,7 @@ A web-based stock trading game inspired by the FIFA Companion App, featuring a l
 1. **Clone and install dependencies:**
    ```bash
    git clone <repo-url>
-   cd stock-trading-game
+   cd wall-street-bets
    npm install
    ```
 

@@ -31,7 +31,7 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0 flex items-center">
               <h1 className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                TradingGame
+                Wall Street Bets
               </h1>
             </Link>
           </div>
