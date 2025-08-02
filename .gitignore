@@ -33,6 +33,9 @@ yarn-error.log*
 # Claude MCP config with secrets
 .claude_mcp_config.json
 
+# Price cache directory
+.cache/
+
 # vercel
 .vercel
 

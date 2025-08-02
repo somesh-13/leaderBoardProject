@@ -320,7 +320,7 @@ Total Return: +42.5%`,
       
       <div className="bg-gray-800 px-4 py-2 border-t border-gray-700">
         <p className="text-xs text-gray-500">
-          Use arrow keys to navigate command history • Press Tab for autocomplete • Type "help" for commands
+          Use arrow keys to navigate command history • Press Tab for autocomplete • Type &quot;help&quot; for commands
         </p>
       </div>
     </div>

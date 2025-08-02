@@ -6,7 +6,17 @@
       "Bash(git rm:*)",
       "Bash(git add:*)",
       "Bash(npx next lint:*)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp:*)",
+      "mcp__eslint__lint-files",
+      "Bash(npm install:*)",
+      "Bash(gh:*)",
+      "mcp__filesystem__create_directory",
+      "mcp__git__git_stash",
+      "mcp__git__git_set_working_dir",
+      "Bash(rm:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": []
   }

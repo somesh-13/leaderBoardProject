@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import TierBadge from '@/components/TierBadge'
-import { getPriceWithFallback, getMultipleHistoricalPrices } from '@/lib/finnhub'
+import { getPriceWithFallback, getMultipleHistoricalPrices, getMultipleDividends } from '@/lib/finnhub'
 
 interface Strategy {
   id: string
@@ -15,110 +15,120 @@ interface Strategy {
   winRate: number
 }
 
+interface PortfolioPosition {
+  symbol: string
+  shares: number
+  avgPrice: number
+  currentPrice: number
+  historicalPrice?: number | null
+  return: number
+  performanceSinceDate?: number
+  pnl: number
+  pnlPct: number
+  dividend: number
+  dividendPct: number
+  totalReturnPct: number
+}
+
 interface Portfolio {
   totalValue: number
   dayChange: number
   totalReturn: number
-  positions: {
-    symbol: string
-    shares: number
-    avgPrice: number
-    currentPrice: number
-    historicalPrice?: number | null
-    return: number
-    performanceSinceDate?: number
-  }[]
+  positions: PortfolioPosition[]
+}
+
+type TabType = 'Total Value' | 'Day Change' | 'Total Return'
+
+const leaderboardUsers: Record<string, any> = {
+  'Matt': {
+    username: 'Matt',
+    tier: 'S' as const,
+    rank: 1,
+    totalReturn: 45.2,
+    followers: 1847,
+    following: 67,
+    sector: 'Technology',
+    portfolio: ['RKLB', 'AMZN', 'SOFI', 'ASTS', 'BRK.B', 'CELH', 'OSCR', 'EOG', 'BROS', 'ABCL']
+  },
+  'Amit': {
+    username: 'Amit',
+    tier: 'S' as const,
+    rank: 2,
+    totalReturn: 42.8,
+    followers: 1523,
+    following: 89,
+    sector: 'Technology',
+    portfolio: ['PLTR', 'HOOD', 'TSLA', 'AMD', 'JPM', 'NBIS', 'GRAB', 'AAPL', 'V', 'DUOL']
+  },
+  'Steve': {
+    username: 'Steve',
+    tier: 'S' as const,
+    rank: 3,
+    totalReturn: 39.5,
+    followers: 1298,
+    following: 124,
+    sector: 'Technology',
+    portfolio: ['META', 'MSTR', 'MSFT', 'HIMS', 'AVGO', 'CRWD', 'NFLX', 'CRM', 'PYPL', 'MU']
+  },
+  'Tannor': {
+    username: 'Tannor',
+    tier: 'S' as const,
+    rank: 4,
+    totalReturn: 37.1,
+    followers: 1156,
+    following: 98,
+    sector: 'Technology',
+    portfolio: ['NVDA', 'NU', 'NOW', 'MELI', 'SHOP', 'TTD', 'ASML', 'APP', 'COIN', 'TSM']
+  },
+  'Kris': {
+    username: 'Kris',
+    tier: 'S' as const,
+    rank: 5,
+    totalReturn: 34.7,
+    followers: 987,
+    following: 145,
+    sector: 'Healthcare',
+    portfolio: ['UNH', 'GOOGL', 'MRVL', 'AXON', 'ELF', 'ORCL', 'CSCO', 'LLY', 'NVO', 'TTWO']
+  },
+  'TradeMaster': {
+    username: 'TradeMaster',
+    tier: 'A' as const,
+    rank: 6,
+    totalReturn: 22.5,
+    followers: 634,
+    following: 203,
+    sector: 'Technology',
+    portfolio: ['AAPL']
+  },
+  'StockGuru': {
+    username: 'StockGuru',
+    tier: 'A' as const,
+    rank: 7,
+    totalReturn: 18.2,
+    followers: 456,
+    following: 156,
+    sector: 'Technology',
+    portfolio: ['TSLA']
+  },
+  'InvestPro': {
+    username: 'InvestPro',
+    tier: 'A' as const,
+    rank: 8,
+    totalReturn: 15.7,
+    followers: 298,
+    following: 187,
+    sector: 'Healthcare',
+    portfolio: ['JNJ']
+  }
 }
 
 export default function UserProfile() {
   const params = useParams()
   const username = params.username as string
   const [activeTab, setActiveTab] = useState<'portfolio' | 'strategies' | 'performance'>('portfolio')
+  const [activePortfolioTab, setActivePortfolioTab] = useState<TabType>('Total Value')
 
-  const leaderboardUsers: Record<string, any> = {
-    'Matt': {
-      username: 'Matt',
-      tier: 'S' as const,
-      rank: 1,
-      totalReturn: 45.2,
-      followers: 1847,
-      following: 67,
-      sector: 'Technology',
-      portfolio: ['RKLB', 'AMZN', 'SOFI', 'ASTS', 'BRK.B', 'CELH', 'OSCR', 'EOG', 'BROS', 'ABCL']
-    },
-    'Amit': {
-      username: 'Amit',
-      tier: 'S' as const,
-      rank: 2,
-      totalReturn: 42.8,
-      followers: 1523,
-      following: 89,
-      sector: 'Technology',
-      portfolio: ['PLTR', 'HOOD', 'TSLA', 'AMD', 'JPM', 'NBIS', 'GRAB', 'AAPL', 'V', 'DUOL']
-    },
-    'Steve': {
-      username: 'Steve',
-      tier: 'S' as const,
-      rank: 3,
-      totalReturn: 39.5,
-      followers: 1298,
-      following: 124,
-      sector: 'Technology',
-      portfolio: ['META', 'MSTR', 'MSFT', 'HIMS', 'AVGO', 'CRWD', 'NFLX', 'CRM', 'PYPL', 'MU']
-    },
-    'Tannor': {
-      username: 'Tannor',
-      tier: 'S' as const,
-      rank: 4,
-      totalReturn: 37.1,
-      followers: 1156,
-      following: 98,
-      sector: 'Technology',
-      portfolio: ['NVDA', 'NU', 'NOW', 'MELI', 'SHOP', 'TTD', 'ASML', 'APP', 'COIN', 'TSM']
-    },
-    'Kris': {
-      username: 'Kris',
-      tier: 'S' as const,
-      rank: 5,
-      totalReturn: 34.7,
-      followers: 987,
-      following: 145,
-      sector: 'Healthcare',
-      portfolio: ['UNH', 'GOOGL', 'MRVL', 'AXON', 'ELF', 'ORCL', 'CSCO', 'LLY', 'NVO', 'TTWO']
-    },
-    'TradeMaster': {
-      username: 'TradeMaster',
-      tier: 'A' as const,
-      rank: 6,
-      totalReturn: 22.5,
-      followers: 634,
-      following: 203,
-      sector: 'Technology',
-      portfolio: ['AAPL']
-    },
-    'StockGuru': {
-      username: 'StockGuru',
-      tier: 'A' as const,
-      rank: 7,
-      totalReturn: 18.2,
-      followers: 456,
-      following: 156,
-      sector: 'Technology',
-      portfolio: ['TSLA']
-    },
-    'InvestPro': {
-      username: 'InvestPro',
-      tier: 'A' as const,
-      rank: 8,
-      totalReturn: 15.7,
-      followers: 298,
-      following: 187,
-      sector: 'Healthcare',
-      portfolio: ['JNJ']
-    }
-  }
-
-  const user = leaderboardUsers[username] || {
+  const user = useMemo(() => leaderboardUsers[username] || {
     username: username,
     tier: 'C' as const,
     rank: 99,
@@ -127,7 +137,7 @@ export default function UserProfile() {
     following: 45,
     sector: 'Mixed',
     portfolio: ['SPY', 'QQQ', 'BND']
-  }
+  }, [username])
 
   const [portfolio, setPortfolio] = useState<Portfolio>({
     totalValue: user.rank <= 5 ? 125450.32 - (user.rank - 1) * 15000 : 67123.45 - (user.rank - 6) * 5000,
@@ -138,10 +148,11 @@ export default function UserProfile() {
   
   const [isLoadingPrices, setIsLoadingPrices] = useState(true)
   const [performanceSinceDate, setPerformanceSinceDate] = useState(() => {
-    // Default to June 16, 2024 for demo purposes
-    return '2024-06-16'
+    // Default to June 16, 2025 (Monday - valid trading day) for demo purposes
+    return '2025-06-16'
   })
   const [isLoadingHistorical, setIsLoadingHistorical] = useState(false)
+  const [isLoadingDividends, setIsLoadingDividends] = useState(false)
 
   useEffect(() => {
     const fetchPortfolioPrices = async () => {
@@ -154,7 +165,7 @@ export default function UserProfile() {
       
       try {
         const positions = await Promise.all(
-          user.portfolio.map(async (symbol: string, index: number) => {
+          user.portfolio.map(async (symbol: string) => {
             const { price } = await getPriceWithFallback(symbol)
             // Use deterministic values based on symbol to avoid infinite loops
             const shares = 50 + (symbol.charCodeAt(0) % 100)
@@ -183,46 +194,100 @@ export default function UserProfile() {
     }
 
     fetchPortfolioPrices()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username])
 
-  // Fetch historical prices when date changes
+  // Fetch historical prices and dividends when date changes
   useEffect(() => {
-    const fetchHistoricalPrices = async () => {
+    const fetchHistoricalData = async () => {
       if (!user.portfolio || user.portfolio.length === 0 || portfolio.positions.length === 0) {
         return
       }
       
       setIsLoadingHistorical(true)
+      setIsLoadingDividends(true)
       
       try {
-        const historicalPrices = await getMultipleHistoricalPrices(user.portfolio, performanceSinceDate)
+        const [historicalPrices, dividends] = await Promise.all([
+          getMultipleHistoricalPrices(user.portfolio, performanceSinceDate),
+          getMultipleDividends(user.portfolio, performanceSinceDate, new Date().toISOString().split('T')[0])
+        ])
         
         setPortfolio(prev => ({
           ...prev,
           positions: prev.positions.map(position => {
             const historicalPrice = historicalPrices[position.symbol]
-            const performanceSinceDate = historicalPrice 
-              ? ((position.currentPrice - historicalPrice) / historicalPrice) * 100
-              : undefined
+            const dividend = dividends[position.symbol] || 0
+            
+            // Calculate P&L metrics
+            const pnl = historicalPrice ? position.currentPrice - historicalPrice : 0
+            const pnlPct = historicalPrice ? ((position.currentPrice - historicalPrice) / historicalPrice) * 100 : 0
+            const dividendPct = historicalPrice ? (dividend / historicalPrice) * 100 : 0
+            const totalReturnPct = pnlPct + dividendPct
               
             return {
               ...position,
               historicalPrice,
-              performanceSinceDate
+              performanceSinceDate: pnlPct,
+              pnl,
+              pnlPct,
+              dividend,
+              dividendPct,
+              totalReturnPct
             }
           })
         }))
       } catch (error) {
-        console.error('Error fetching historical prices:', error)
+        console.error('Error fetching historical data:', error)
       } finally {
         setIsLoadingHistorical(false)
+        setIsLoadingDividends(false)
       }
     }
 
     if (portfolio.positions.length > 0) {
-      fetchHistoricalPrices()
+      fetchHistoricalData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [performanceSinceDate, portfolio.positions.length])
+
+  // Calculate portfolio totals with equal $1,000 positions
+  const calculatePortfolioTotals = useCallback(() => {
+    if (portfolio.positions.length === 0) {
+      return {
+        initialTotal: 0,
+        finalTotal: 0,
+        portfolioPL: 0,
+        portfolioReturnPct: 0
+      }
+    }
+
+    let initialTotal = 0
+    let finalTotal = 0
+
+    portfolio.positions.forEach(position => {
+      if (position.historicalPrice && position.historicalPrice > 0) {
+        const investment = 1000 // $1,000 per stock
+        const shares = investment / position.historicalPrice
+        const finalValue = shares * position.currentPrice
+        
+        initialTotal += investment
+        finalTotal += finalValue
+      }
+    })
+
+    const portfolioPL = finalTotal - initialTotal
+    const portfolioReturnPct = initialTotal > 0 ? (portfolioPL / initialTotal) * 100 : 0
+
+    return {
+      initialTotal,
+      finalTotal,
+      portfolioPL,
+      portfolioReturnPct
+    }
+  }, [portfolio.positions])
+
+  const portfolioTotals = calculatePortfolioTotals()
 
   const mockStrategies: Strategy[] = [
     {
@@ -312,34 +377,122 @@ export default function UserProfile() {
           {/* Portfolio Tab */}
           {activeTab === 'portfolio' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="card text-center">
-                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Total Value
-                  </h3>
-                  <p className="text-2xl font-bold">
-                    ${portfolio.totalValue.toLocaleString()}
-                  </p>
+              {/* Portfolio Summary Tabs */}
+              <div className="card">
+                <div className="border-b border-gray-200 dark:border-gray-700 mb-4">
+                  <nav className="-mb-px flex space-x-8">
+                    {(['Total Value', 'Day Change', 'Total Return'] as TabType[]).map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActivePortfolioTab(tab)}
+                        className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                          activePortfolioTab === tab
+                            ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                  </nav>
                 </div>
-                <div className="card text-center">
-                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Day Change
-                  </h3>
-                  <p className={`text-2xl font-bold ${
-                    portfolio.dayChange >= 0 ? 'text-gain' : 'text-loss'
-                  }`}>
-                    {portfolio.dayChange >= 0 ? '+' : ''}{portfolio.dayChange}%
-                  </p>
-                </div>
-                <div className="card text-center">
-                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Total Return
-                  </h3>
-                  <p className={`text-2xl font-bold ${
-                    portfolio.totalReturn >= 0 ? 'text-gain' : 'text-loss'
-                  }`}>
-                    {portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturn}%
-                  </p>
+                
+                {/* Tab Content */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {activePortfolioTab === 'Total Value' && (
+                    <>
+                      <div className="text-center">
+                        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Current Portfolio Value
+                        </h3>
+                        <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                          ${portfolioTotals.finalTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Total Positions
+                        </h3>
+                        <p className="text-3xl font-bold">
+                          {portfolio.positions.length}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Total Return Percentage
+                        </h3>
+                        <p className={`text-3xl font-bold ${
+                          portfolioTotals.portfolioReturnPct >= 0 ? 'text-gain' : 'text-loss'
+                        }`}>
+                          {portfolioTotals.portfolioReturnPct >= 0 ? '+' : ''}{portfolioTotals.portfolioReturnPct.toFixed(2)}%
+                        </p>
+                      </div>
+                    </>
+                  )}
+                  
+                  {activePortfolioTab === 'Day Change' && (
+                    <>
+                      <div className="text-center">
+                        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Daily Change
+                        </h3>
+                        <p className={`text-3xl font-bold ${
+                          portfolio.dayChange >= 0 ? 'text-gain' : 'text-loss'
+                        }`}>
+                          {portfolio.dayChange >= 0 ? '+' : ''}{portfolio.dayChange.toFixed(2)}%
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Daily P&L
+                        </h3>
+                        <p className={`text-3xl font-bold ${
+                          portfolio.dayChange >= 0 ? 'text-gain' : 'text-loss'
+                        }`}>
+                          ${((portfolio.totalValue * portfolio.dayChange) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Best Performer
+                        </h3>
+                        <p className="text-lg font-bold text-gain">
+                          {portfolio.positions.length > 0 ? portfolio.positions[0].symbol : 'N/A'}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                  
+                  {activePortfolioTab === 'Total Return' && (
+                    <>
+                      <div className="text-center">
+                        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Total Return Since {new Date(performanceSinceDate).toLocaleDateString()}
+                        </h3>
+                        <p className={`text-3xl font-bold ${
+                          portfolio.totalReturn >= 0 ? 'text-gain' : 'text-loss'
+                        }`}>
+                          {portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturn.toFixed(2)}%
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Total Dividends
+                        </h3>
+                        <p className="text-3xl font-bold text-green-600">
+                          ${portfolio.positions.reduce((sum, pos) => sum + (pos.dividend || 0), 0).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Capital Gains
+                        </h3>
+                        <p className="text-3xl font-bold text-blue-600">
+                          ${portfolio.positions.reduce((sum, pos) => sum + (pos.pnl || 0), 0).toFixed(2)}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -367,53 +520,96 @@ export default function UserProfile() {
                   <table className="min-w-full">
                     <thead>
                       <tr className="border-b border-gray-200 dark:border-gray-700">
-                        <th className="text-left py-2">Symbol</th>
-                        <th className="text-left py-2">Shares</th>
-                        <th className="text-left py-2">Avg Price</th>
-                        <th className="text-left py-2">Current</th>
-                        <th className="text-left py-2">Price on {new Date(performanceSinceDate).toLocaleDateString()}</th>
-                        <th className="text-left py-2">All-Time Return</th>
-                        <th className="text-left py-2">Since {new Date(performanceSinceDate).toLocaleDateString()}</th>
+                        <th className="text-left py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">Stock Symbol</th>
+                        <th className="text-right py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">{new Date(performanceSinceDate + 'T00:00:00').toLocaleDateString()} Closing Price</th>
+                        <th className="text-right py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">{new Date().toLocaleDateString()} Current Price</th>
+                        <th className="text-right py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">P&L</th>
+                        <th className="text-right py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">P&L %</th>
+                        <th className="text-right py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">Dividend</th>
+                        <th className="text-right py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">Dividend %</th>
+                        <th className="text-right py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">Total Return %</th>
                       </tr>
                     </thead>
                     <tbody>
                       {isLoadingPrices ? (
                         <tr>
-                          <td colSpan={7} className="py-8 text-center text-gray-500 dark:text-gray-400">
+                          <td colSpan={8} className="py-8 text-center text-gray-500 dark:text-gray-400">
                             Loading portfolio data...
                           </td>
                         </tr>
                       ) : (
-                        portfolio.positions.map((position) => (
-                          <tr key={position.symbol} className="border-b border-gray-100 dark:border-gray-800">
-                            <td className="py-3 font-medium">{position.symbol}</td>
-                            <td className="py-3">{position.shares}</td>
-                            <td className="py-3">${position.avgPrice}</td>
-                            <td className="py-3">${position.currentPrice}</td>
-                            <td className="py-3">
+                        portfolio.positions
+                          .filter(position => {
+                            if (activePortfolioTab === 'Total Value') return true
+                            if (activePortfolioTab === 'Day Change') return position.return !== 0
+                            if (activePortfolioTab === 'Total Return') return position.totalReturnPct !== undefined
+                            return true
+                          })
+                          .map((position) => (
+                          <tr key={position.symbol} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                            <td className="py-3 px-2 font-medium text-blue-600 dark:text-blue-400">
+                              {position.symbol}
+                            </td>
+                            <td className="py-3 px-2 text-right font-mono text-sm">
                               {position.historicalPrice ? (
                                 `$${position.historicalPrice.toFixed(2)}`
                               ) : (
-                                <span className="text-gray-400 text-sm">
+                                <span className="text-gray-400 text-xs">
                                   {isLoadingHistorical ? 'Loading...' : 'N/A'}
                                 </span>
                               )}
                             </td>
-                            <td className={`py-3 font-semibold ${
-                              position.return >= 0 ? 'text-gain' : 'text-loss'
-                            }`}>
-                              {position.return >= 0 ? '+' : ''}{position.return}%
+                            <td className="py-3 px-2 text-right font-mono text-sm font-medium">
+                              ${position.currentPrice.toFixed(2)}
                             </td>
-                            <td className={`py-3 font-semibold ${
-                              position.performanceSinceDate !== undefined
-                                ? position.performanceSinceDate >= 0 ? 'text-gain' : 'text-loss'
-                                : ''
+                            <td className={`py-3 px-2 text-right font-mono text-sm font-semibold ${
+                              (position.pnl || 0) >= 0 ? 'text-gain' : 'text-loss'
                             }`}>
-                              {position.performanceSinceDate !== undefined ? (
-                                `${position.performanceSinceDate >= 0 ? '+' : ''}${position.performanceSinceDate.toFixed(2)}%`
+                              {position.pnl ? (
+                                `${(position.pnl >= 0) ? '+' : ''}$${position.pnl.toFixed(2)}`
                               ) : (
-                                <span className="text-gray-400 text-sm">
-                                  {isLoadingHistorical ? 'Loading...' : 'N/A'}
+                                <span className="text-gray-400 text-xs">
+                                  {isLoadingHistorical ? 'Loading...' : '$0.00'}
+                                </span>
+                              )}
+                            </td>
+                            <td className={`py-3 px-2 text-right font-mono text-sm font-semibold ${
+                              (position.pnlPct || 0) >= 0 ? 'text-gain' : 'text-loss'
+                            }`}>
+                              {position.pnlPct !== undefined ? (
+                                `${(position.pnlPct >= 0) ? '+' : ''}${position.pnlPct.toFixed(2)}%`
+                              ) : (
+                                <span className="text-gray-400 text-xs">
+                                  {isLoadingHistorical ? 'Loading...' : '0.00%'}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-2 text-right font-mono text-sm text-green-600 dark:text-green-400 font-medium">
+                              {position.dividend !== undefined ? (
+                                `$${position.dividend.toFixed(2)}`
+                              ) : (
+                                <span className="text-gray-400 text-xs">
+                                  {isLoadingDividends ? 'Loading...' : '$0.00'}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-2 text-right font-mono text-sm text-green-600 dark:text-green-400 font-medium">
+                              {position.dividendPct !== undefined ? (
+                                `${position.dividendPct.toFixed(2)}%`
+                              ) : (
+                                <span className="text-gray-400 text-xs">
+                                  {isLoadingDividends ? 'Loading...' : '0.00%'}
+                                </span>
+                              )}
+                            </td>
+                            <td className={`py-3 px-2 text-right font-mono text-sm font-bold ${
+                              (position.totalReturnPct || 0) >= 0 ? 'text-gain' : 'text-loss'
+                            }`}>
+                              {position.totalReturnPct !== undefined ? (
+                                `${(position.totalReturnPct >= 0) ? '+' : ''}${position.totalReturnPct.toFixed(2)}%`
+                              ) : (
+                                <span className="text-gray-400 text-xs">
+                                  {isLoadingHistorical || isLoadingDividends ? 'Loading...' : '0.00%'}
                                 </span>
                               )}
                             </td>
@@ -423,6 +619,62 @@ export default function UserProfile() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+
+              {/* Portfolio Summary with Equal $1,000 Positions */}
+              <div className="card">
+                <h3 className="text-lg font-semibold mb-4">Portfolio Performance Summary</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Based on equal $1,000 investment in each stock on {new Date(performanceSinceDate).toLocaleDateString()}
+                </p>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Current Portfolio Value
+                    </h4>
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      ${portfolioTotals.finalTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Initial Investment
+                    </h4>
+                    <p className="text-2xl font-bold">
+                      ${portfolioTotals.initialTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Portfolio Profit/Loss
+                    </h4>
+                    <p className={`text-2xl font-bold ${
+                      portfolioTotals.portfolioPL >= 0 ? 'text-gain' : 'text-loss'
+                    }`}>
+                      {portfolioTotals.portfolioPL >= 0 ? '+' : ''}${portfolioTotals.portfolioPL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Portfolio Total Return
+                    </h4>
+                    <p className={`text-2xl font-bold ${
+                      portfolioTotals.portfolioReturnPct >= 0 ? 'text-gain' : 'text-loss'
+                    }`}>
+                      {portfolioTotals.portfolioReturnPct >= 0 ? '+' : ''}{portfolioTotals.portfolioReturnPct.toFixed(2)}%
+                    </p>
+                  </div>
+                </div>
+                
+                {isLoadingHistorical && (
+                  <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                    Calculating portfolio totals...
+                  </div>
+                )}
               </div>
             </div>
           )}

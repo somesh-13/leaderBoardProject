@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import TierBadge from '@/components/TierBadge'
+import { getPriceWithFallback, getMultipleHistoricalPrices } from '@/lib/finnhub'
 
 interface LeaderboardEntry {
   rank: number
   username: string
   return: number
+  calculatedReturn?: number
   tier: 'S' | 'A' | 'B' | 'C'
   sector: string
   primaryStock: string
@@ -18,8 +20,14 @@ export default function Leaderboard() {
   const [filterSector, setFilterSector] = useState('all')
   const [filterCompany, setFilterCompany] = useState('all')
   const [filterAsset, setFilterAsset] = useState('all')
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([])
+  const [isLoadingReturns, setIsLoadingReturns] = useState(true)
+  const [performanceSinceDate, setPerformanceSinceDate] = useState(() => {
+    // Default to June 16, 2025 (Monday - valid trading day) for demo purposes
+    return '2025-06-16'
+  })
 
-  const mockData: LeaderboardEntry[] = [
+  const mockData: LeaderboardEntry[] = useMemo(() => [
     { rank: 1, username: 'Matt', return: 45.2, tier: 'S', sector: 'Technology', primaryStock: 'RKLB', portfolio: ['RKLB', 'AMZN', 'SOFI', 'ASTS', 'BRK.B', 'CELH', 'OSCR', 'EOG', 'BROS', 'ABCL'] },
     { rank: 2, username: 'Amit', return: 42.8, tier: 'S', sector: 'Technology', primaryStock: 'PLTR', portfolio: ['PLTR', 'HOOD', 'TSLA', 'AMD', 'JPM', 'NBIS', 'GRAB', 'AAPL', 'V', 'DUOL'] },
     { rank: 3, username: 'Steve', return: 39.5, tier: 'S', sector: 'Technology', primaryStock: 'META', portfolio: ['META', 'MSTR', 'MSFT', 'HIMS', 'AVGO', 'CRWD', 'NFLX', 'CRM', 'PYPL', 'MU'] },
@@ -30,9 +38,82 @@ export default function Leaderboard() {
     { rank: 8, username: 'InvestPro', return: 15.7, tier: 'A', sector: 'Healthcare', primaryStock: 'JNJ', portfolio: ['JNJ'] },
     { rank: 9, username: 'MarketWiz', return: 12.4, tier: 'B', sector: 'Finance', primaryStock: 'JPM', portfolio: ['JPM'] },
     { rank: 10, username: 'BullRunner', return: 9.8, tier: 'B', sector: 'Technology', primaryStock: 'MSFT', portfolio: ['MSFT'] },
-  ]
+  ], [])
 
-  const filteredData = mockData.filter(entry => {
+  // Calculate portfolio returns with equal $1,000 positions
+  const calculatePortfolioReturn = useCallback(async (portfolio: string[]) => {
+    try {
+      // Get current prices
+      const currentPrices: Record<string, number> = {}
+      await Promise.all(
+        portfolio.map(async (symbol) => {
+          const { price } = await getPriceWithFallback(symbol)
+          currentPrices[symbol] = price
+        })
+      )
+
+      // Get historical prices
+      const historicalPrices = await getMultipleHistoricalPrices(portfolio, performanceSinceDate)
+
+      let initialTotal = 0
+      let finalTotal = 0
+
+      portfolio.forEach(symbol => {
+        const currentPrice = currentPrices[symbol]
+        const historicalPrice = historicalPrices[symbol]
+        
+        if (currentPrice && historicalPrice && historicalPrice > 0) {
+          const investment = 1000 // $1,000 per stock
+          const shares = investment / historicalPrice
+          const finalValue = shares * currentPrice
+          
+          initialTotal += investment
+          finalTotal += finalValue
+        }
+      })
+
+      if (initialTotal > 0) {
+        const portfolioPL = finalTotal - initialTotal
+        const portfolioReturnPct = (portfolioPL / initialTotal) * 100
+        return portfolioReturnPct
+      }
+      
+      return 0
+    } catch (error) {
+      console.error('Error calculating portfolio return:', error)
+      return 0
+    }
+  }, [performanceSinceDate])
+
+  useEffect(() => {
+    const calculateAllReturns = async () => {
+      setIsLoadingReturns(true)
+      
+      const updatedData = await Promise.all(
+        mockData.map(async (entry) => {
+          const calculatedReturn = await calculatePortfolioReturn(entry.portfolio)
+          return {
+            ...entry,
+            calculatedReturn
+          }
+        })
+      )
+
+      // Sort by calculated return and update ranks
+      updatedData.sort((a, b) => (b.calculatedReturn || 0) - (a.calculatedReturn || 0))
+      updatedData.forEach((entry, index) => {
+        entry.rank = index + 1
+      })
+
+      setLeaderboardData(updatedData)
+      setIsLoadingReturns(false)
+    }
+
+    calculateAllReturns()
+    // eslint-disable-next-line react-hooks/exhaustive-deps  
+  }, [performanceSinceDate])
+
+  const filteredData = (leaderboardData.length > 0 ? leaderboardData : mockData).filter(entry => {
     if (filterSector !== 'all' && entry.sector !== filterSector) return false
     if (filterCompany !== 'all' && entry.primaryStock !== filterCompany) return false
     return true
@@ -49,7 +130,7 @@ export default function Leaderboard() {
 
       {/* Filters */}
       <div className="card mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium mb-2">Sector</label>
             <select 
@@ -94,6 +175,17 @@ export default function Leaderboard() {
               <option value="etfs">ETFs</option>
               <option value="options">Options</option>
             </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-2">Performance Since</label>
+            <input
+              type="date"
+              value={performanceSinceDate}
+              onChange={(e) => setPerformanceSinceDate(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
           </div>
         </div>
       </div>
@@ -154,11 +246,16 @@ export default function Leaderboard() {
                     </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`text-2xl font-bold ${
-                      entry.return >= 0 ? 'text-gain' : 'text-loss'
-                    }`}>
-                      {entry.return >= 0 ? '+' : ''}{entry.return}%
-                    </span>
+                    {isLoadingReturns ? (
+                      <div className="text-gray-500 text-sm">Calculating...</div>
+                    ) : (
+                      <span className={`text-2xl font-bold ${
+                        (entry.calculatedReturn !== undefined ? entry.calculatedReturn : entry.return) >= 0 ? 'text-gain' : 'text-loss'
+                      }`}>
+                        {(entry.calculatedReturn !== undefined ? entry.calculatedReturn : entry.return) >= 0 ? '+' : ''}
+                        {(entry.calculatedReturn !== undefined ? entry.calculatedReturn : entry.return).toFixed(2)}%
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <TierBadge tier={entry.tier} />

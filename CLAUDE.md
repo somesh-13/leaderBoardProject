@@ -241,6 +241,10 @@ claude mcp list
 npx eslint .
 ```
 
+## Project Best Practices and Reminders
+
+- Always use Eslint Server after modifying, editing & read operations
+
 Remember to:
 - Update the project-metadata.json as needed
 - Never commit sensitive information or API keys
