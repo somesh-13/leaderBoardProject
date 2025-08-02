@@ -7,8 +7,8 @@ import Navbar from '@/components/Navbar'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Stock Trading Game',
-  description: 'Compete, Trade, Win! A web-based stock trading game with leaderboards and strategy testing.',
+  title: 'Wall Street Bets',
+  description: 'Compete, Trade, Win! A web-based trading platform inspired by the Wall Street Bets community with leaderboards and strategy testing.',
 }
 
 export default function RootLayout({

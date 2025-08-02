@@ -1,6 +1,6 @@
-# Stock Trading Game
+# Wall Street Bets
 
-A web-based stock trading game inspired by the FIFA Companion App, featuring a leaderboard, tiered rankings, strategy testing via a chat terminal, and user profiles with tokenized investment options. Users can filter by technologies, companies, or assets, view top strategies, and simulate trades using technical indicators like Keltner Channels and Bollinger Bands.
+A web-based trading platform inspired by the Wall Street Bets community, featuring a leaderboard, tiered rankings, strategy testing via a chat terminal, and user profiles with tokenized investment options. Users can filter by technologies, companies, or assets, view top strategies, and simulate trades using technical indicators like Keltner Channels and Bollinger Bands.
 
 ## Features
 
