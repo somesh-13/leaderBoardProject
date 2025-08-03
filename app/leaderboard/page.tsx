@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import Link from 'next/link'
-import TierBadge from '@/components/TierBadge'
 import { getPriceWithFallback, getMultipleHistoricalPrices } from '@/lib/finnhub'
 import { AnimatedTooltip } from '@/components/ui/animated-tooltip'
 
@@ -190,6 +189,54 @@ export default function Leaderboard() {
     </th>
   )
 
+  // Tier-to-Icon Mapping based on Wall Street Bets documentation
+  const tierIconMap = {
+    'S': 'bottts',      // Bold and unique icons for top traders
+    'A': 'avataaars',   // Clean avatars for high performers  
+    'B': 'miniavs',     // Simplified but friendly avatars for solid performers
+    'C': 'micah',       // Approachable, lighthearted icons for average entrants
+    'F': 'identicon'    // Abstract/generic icons for lowest tier
+  }
+
+  const getTraderIcon = (tier: 'S' | 'A' | 'B' | 'C' | 'F', seed: string) => {
+    const style = tierIconMap[tier] || 'identicon'
+    const backgroundColor = {
+      'S': 'ffd700,ff6b6b,4ecdc4', // Gold/vibrant for elite
+      'A': 'c0392b,e74c3c,3498db', // Red/blue for expert
+      'B': 'f39c12,e67e22,2ecc71', // Orange/green for intermediate
+      'C': '95a5a6,7f8c8d,34495e', // Gray for beginner
+      'F': '2c3e50,34495e,7f8c8d'  // Dark gray for lowest
+    }[tier] || '95a5a6,7f8c8d,34495e'
+    
+    return `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${backgroundColor}&colorful=1`
+  }
+
+  const getTierTooltipData = (tier: 'S' | 'A' | 'B' | 'C', traderName: string) => {
+    const tierData = {
+      'S': {
+        name: "S Tier",
+        designation: "Elite • Top 5% of investors • Returns ≥30% • Legendary status with exceptional market performance",
+        image: getTraderIcon('S', `${traderName}-S-tier`)
+      },
+      'A': {
+        name: "A Tier", 
+        designation: "Expert • Strong performers • Returns 15-30% • Skilled traders with consistent profits",
+        image: getTraderIcon('A', `${traderName}-A-tier`)
+      },
+      'B': {
+        name: "B Tier",
+        designation: "Intermediate • Steady growth • Returns 10-15% • Solid foundation with room for improvement", 
+        image: getTraderIcon('B', `${traderName}-B-tier`)
+      },
+      'C': {
+        name: "C Tier",
+        designation: "Beginner • Learning phase • Returns 0-10% • Starting journey with basic market understanding",
+        image: getTraderIcon('C', `${traderName}-C-tier`)
+      }
+    }
+    return tierData[tier]
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
@@ -198,9 +245,9 @@ export default function Leaderboard() {
           Compete with the best traders and climb the tier rankings based on your annual returns.
         </p>
         
-        {/* Top Performers with Animated Tooltips */}
+        {/* GOATS with Animated Tooltips */}
         <div className="mb-6">
-          <h2 className="text-lg font-semibold mb-4 text-center">Top Performers</h2>
+          <h2 className="text-lg font-semibold mb-4 text-center">GOATS</h2>
           <div className="flex justify-center">
             <AnimatedTooltip 
               items={sortedAndFilteredData.slice(0, 6).map((user) => ({
@@ -332,7 +379,14 @@ export default function Leaderboard() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <TierBadge tier={entry.tier} />
+                    <div className="flex justify-center">
+                      <AnimatedTooltip 
+                        items={[{
+                          id: entry.rank,
+                          ...getTierTooltipData(entry.tier, entry.username)
+                        }]}
+                      />
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white font-medium">
                     {entry.primaryStock}
@@ -361,36 +415,6 @@ export default function Leaderboard() {
         </div>
       </div>
 
-      {/* Tier Explanation */}
-      <div className="card mt-8">
-        <h3 className="text-lg font-semibold mb-4">Tier System</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="text-center">
-            <TierBadge tier="S" className="mb-2" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Top 5% of investors
-            </p>
-          </div>
-          <div className="text-center">
-            <TierBadge tier="A" className="mb-2" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Returns ≥15%
-            </p>
-          </div>
-          <div className="text-center">
-            <TierBadge tier="B" className="mb-2" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Returns 10-15%
-            </p>
-          </div>
-          <div className="text-center">
-            <TierBadge tier="C" className="mb-2" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Returns 0-10%
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

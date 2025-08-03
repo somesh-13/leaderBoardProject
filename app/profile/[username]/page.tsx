@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import TierBadge from '@/components/TierBadge'
+import PortfolioPerformanceChart from '@/components/PortfolioPerformanceChart'
 import { getPriceWithFallback, getMultipleHistoricalPrices, getMultipleDividends } from '@/lib/finnhub'
 
 interface Strategy {
@@ -879,12 +880,8 @@ export default function UserProfile() {
           {/* Performance Tab */}
           {activeTab === 'performance' && (
             <div className="card">
-              <h3 className="text-lg font-semibold mb-4">Performance Chart</h3>
-              <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-                <p className="text-gray-500 dark:text-gray-400">
-                  Chart.js integration would go here for {user.username}
-                </p>
-              </div>
+              <h3 className="text-lg font-semibold mb-6">Portfolio Performance</h3>
+              <PortfolioPerformanceChart user={user} />
             </div>
           )}
         </div>
