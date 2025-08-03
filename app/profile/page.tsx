@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import TierBadge from '@/components/TierBadge'
+import PortfolioPerformanceChart from '@/components/PortfolioPerformanceChart'
 
 interface Strategy {
   id: string
@@ -35,7 +36,8 @@ export default function Profile() {
     rank: 1,
     totalReturn: 42.5,
     followers: 1247,
-    following: 89
+    following: 89,
+    portfolio: ['AAPL', 'TSLA', 'MSFT', 'GOOGL', 'NVDA', 'META', 'AMZN', 'NFLX']
   }
 
   const mockPortfolio: Portfolio = {
@@ -255,12 +257,8 @@ export default function Profile() {
           {/* Performance Tab */}
           {activeTab === 'performance' && (
             <div className="card">
-              <h3 className="text-lg font-semibold mb-4">Performance Chart</h3>
-              <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-                <p className="text-gray-500 dark:text-gray-400">
-                  Chart.js integration would go here
-                </p>
-              </div>
+              <h3 className="text-lg font-semibold mb-6">Portfolio Performance</h3>
+              <PortfolioPerformanceChart user={mockUser} />
             </div>
           )}
         </div>
