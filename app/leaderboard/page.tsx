@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import TierBadge from '@/components/TierBadge'
 import { getPriceWithFallback, getMultipleHistoricalPrices } from '@/lib/finnhub'
+import { AnimatedTooltip } from '@/components/ui/animated-tooltip'
 
 interface LeaderboardEntry {
   rank: number
@@ -16,6 +17,9 @@ interface LeaderboardEntry {
   portfolio: string[]
 }
 
+type SortField = 'rank' | 'username' | 'return' | 'tier' | 'primaryStock' | 'sector'
+type SortDirection = 'asc' | 'desc'
+
 export default function Leaderboard() {
   const [filterSector, setFilterSector] = useState('all')
   const [filterCompany, setFilterCompany] = useState('all')
@@ -26,6 +30,8 @@ export default function Leaderboard() {
     // Default to June 16, 2025 (Monday - valid trading day) for demo purposes
     return '2025-06-16'
   })
+  const [sortField, setSortField] = useState<SortField>('rank')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
   const mockData: LeaderboardEntry[] = useMemo(() => [
     { rank: 1, username: 'Matt', return: 45.2, tier: 'S', sector: 'Technology', primaryStock: 'RKLB', portfolio: ['RKLB', 'AMZN', 'SOFI', 'ASTS', 'BRK.B', 'CELH', 'OSCR', 'EOG', 'BROS', 'ABCL'] },
@@ -113,19 +119,99 @@ export default function Leaderboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps  
   }, [performanceSinceDate])
 
-  const filteredData = (leaderboardData.length > 0 ? leaderboardData : mockData).filter(entry => {
-    if (filterSector !== 'all' && entry.sector !== filterSector) return false
-    if (filterCompany !== 'all' && entry.primaryStock !== filterCompany) return false
-    return true
-  })
+  const handleSort = useCallback((field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }, [sortField, sortDirection])
+
+  const sortedAndFilteredData = useMemo(() => {
+    const data = (leaderboardData.length > 0 ? leaderboardData : mockData).filter(entry => {
+      if (filterSector !== 'all' && entry.sector !== filterSector) return false
+      if (filterCompany !== 'all' && entry.primaryStock !== filterCompany) return false
+      return true
+    })
+
+    return [...data].sort((a, b) => {
+      let aValue: any
+      let bValue: any
+
+      switch (sortField) {
+        case 'rank':
+          aValue = a.rank
+          bValue = b.rank
+          break
+        case 'username':
+          aValue = a.username.toLowerCase()
+          bValue = b.username.toLowerCase()
+          break
+        case 'return':
+          aValue = a.calculatedReturn !== undefined ? a.calculatedReturn : a.return
+          bValue = b.calculatedReturn !== undefined ? b.calculatedReturn : b.return
+          break
+        case 'tier':
+          const tierOrder = { 'S': 4, 'A': 3, 'B': 2, 'C': 1 }
+          aValue = tierOrder[a.tier]
+          bValue = tierOrder[b.tier]
+          break
+        case 'primaryStock':
+          aValue = a.primaryStock.toLowerCase()
+          bValue = b.primaryStock.toLowerCase()
+          break
+        case 'sector':
+          aValue = a.sector.toLowerCase()
+          bValue = b.sector.toLowerCase()
+          break
+        default:
+          return 0
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [leaderboardData, mockData, filterSector, filterCompany, sortField, sortDirection])
+
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <th 
+      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors select-none"
+      onClick={() => handleSort(field)}
+    >
+      <div className="flex items-center space-x-1">
+        <span>{children}</span>
+        <span className="flex flex-col">
+          <span className={`text-xs leading-none ${sortField === field && sortDirection === 'asc' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-300 dark:text-gray-600'}`}>▲</span>
+          <span className={`text-xs leading-none ${sortField === field && sortDirection === 'desc' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-300 dark:text-gray-600'}`}>▼</span>
+        </span>
+      </div>
+    </th>
+  )
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-4">Leaderboard</h1>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
           Compete with the best traders and climb the tier rankings based on your annual returns.
         </p>
+        
+        {/* Top Performers with Animated Tooltips */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-4 text-center">Top Performers</h2>
+          <div className="flex justify-center">
+            <AnimatedTooltip 
+              items={sortedAndFilteredData.slice(0, 6).map((user) => ({
+                id: user.rank,
+                name: user.username,
+                designation: `Rank #${user.rank} • ${user.tier} Tier • ${(user.calculatedReturn !== undefined ? user.calculatedReturn : user.return).toFixed(1)}% Return`,
+                image: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
+              }))}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
@@ -196,31 +282,19 @@ export default function Leaderboard() {
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Rank
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Trader
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Annual Return
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Tier
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Primary Stock
-                </th>
+                <SortableHeader field="rank">Rank</SortableHeader>
+                <SortableHeader field="username">Trader</SortableHeader>
+                <SortableHeader field="return">Annual Return</SortableHeader>
+                <SortableHeader field="tier">Tier</SortableHeader>
+                <SortableHeader field="primaryStock">Primary Stock</SortableHeader>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Portfolio
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Sector
-                </th>
+                <SortableHeader field="sector">Sector</SortableHeader>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredData.map((entry) => (
+              {sortedAndFilteredData.map((entry) => (
                 <tr 
                   key={entry.rank} 
                   className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"

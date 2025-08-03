@@ -38,6 +38,8 @@ interface Portfolio {
 }
 
 type TabType = 'Total Value' | 'Day Change' | 'Total Return'
+type PositionSortField = 'symbol' | 'historicalPrice' | 'currentPrice' | 'pnl' | 'pnlPct' | 'dividend' | 'dividendPct' | 'totalReturnPct'
+type SortDirection = 'asc' | 'desc'
 
 const leaderboardUsers: Record<string, any> = {
   'Matt': {
@@ -153,6 +155,8 @@ export default function UserProfile() {
   })
   const [isLoadingHistorical, setIsLoadingHistorical] = useState(false)
   const [isLoadingDividends, setIsLoadingDividends] = useState(false)
+  const [sortField, setSortField] = useState<PositionSortField>('symbol')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
   useEffect(() => {
     const fetchPortfolioPrices = async () => {
@@ -289,6 +293,84 @@ export default function UserProfile() {
 
   const portfolioTotals = calculatePortfolioTotals()
 
+  const handleSort = useCallback((field: PositionSortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }, [sortField, sortDirection])
+
+  const sortedPositions = useMemo(() => {
+    return [...portfolio.positions].sort((a, b) => {
+      let aValue: any
+      let bValue: any
+
+      switch (sortField) {
+        case 'symbol':
+          aValue = a.symbol.toLowerCase()
+          bValue = b.symbol.toLowerCase()
+          break
+        case 'historicalPrice':
+          aValue = a.historicalPrice || 0
+          bValue = b.historicalPrice || 0
+          break
+        case 'currentPrice':
+          aValue = a.currentPrice
+          bValue = b.currentPrice
+          break
+        case 'pnl':
+          aValue = a.pnl || 0
+          bValue = b.pnl || 0
+          break
+        case 'pnlPct':
+          aValue = a.pnlPct || 0
+          bValue = b.pnlPct || 0
+          break
+        case 'dividend':
+          aValue = a.dividend || 0
+          bValue = b.dividend || 0
+          break
+        case 'dividendPct':
+          aValue = a.dividendPct || 0
+          bValue = b.dividendPct || 0
+          break
+        case 'totalReturnPct':
+          aValue = a.totalReturnPct || 0
+          bValue = b.totalReturnPct || 0
+          break
+        default:
+          return 0
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [portfolio.positions, sortField, sortDirection])
+
+  const SortableHeader = ({ field, children, className = "", tooltip }: { 
+    field: PositionSortField; 
+    children: React.ReactNode; 
+    className?: string;
+    tooltip?: string;
+  }) => (
+    <th 
+      className={`py-3 px-2 text-sm font-bold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors select-none sticky top-0 bg-white dark:bg-gray-900 ${className}`}
+      onClick={() => handleSort(field)}
+      title={tooltip}
+    >
+      <div className="flex items-center space-x-1">
+        <span>{children}</span>
+        <span className="flex flex-col">
+          <span className={`text-xs leading-none ${sortField === field && sortDirection === 'asc' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-300 dark:text-gray-600'}`}>▲</span>
+          <span className={`text-xs leading-none ${sortField === field && sortDirection === 'desc' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-300 dark:text-gray-600'}`}>▼</span>
+        </span>
+      </div>
+    </th>
+  )
+
   const mockStrategies: Strategy[] = [
     {
       id: '1',
@@ -311,37 +393,58 @@ export default function UserProfile() {
   ]
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* User Info Sidebar */}
         <div className="lg:col-span-1">
           <div className="card text-center mb-6">
+            {/* Profile Avatar */}
             <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
               <span className="text-2xl font-bold text-white">
                 {user.username.charAt(0)}
               </span>
             </div>
-            <h1 className="text-2xl font-bold mb-2">{user.username}</h1>
-            <TierBadge tier={user.tier} className="mb-4" />
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Rank #{user.rank} • {user.totalReturn}% Annual Return
-            </p>
             
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {user.followers.toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Followers</p>
+            {/* User Info */}
+            <h1 className="text-2xl font-bold mb-2">{user.username}</h1>
+            <div className="flex justify-center mb-4">
+              <TierBadge tier={user.tier} />
+            </div>
+            
+            {/* Key Stats Group */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-6">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="text-center">
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                    #{user.rank}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Rank</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                    {user.totalReturn.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Annual Return</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {user.following}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Following</p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center">
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                    {user.followers.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Followers</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                    {user.following}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Following</p>
+                </div>
               </div>
             </div>
 
+            {/* Action Buttons */}
             <div className="flex flex-col gap-2">
               <button className="btn-primary w-full">Follow</button>
               <button className="btn-secondary w-full">Invest in Strategy</button>
@@ -350,7 +453,7 @@ export default function UserProfile() {
         </div>
 
         {/* Main Content */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-3 min-w-0">
           {/* Tab Navigation */}
           <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
             <nav className="-mb-px flex space-x-8">
@@ -498,9 +601,25 @@ export default function UserProfile() {
 
               <div className="card">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                  <h3 className="text-lg font-semibold">Positions</h3>
-                  <div className="flex items-center gap-2">
-                    <label htmlFor="performanceDate" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-semibold">Portfolio Positions</h3>
+                    <div className="flex gap-2">
+                      <button 
+                        title="Export to CSV"
+                        className="px-3 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                      >
+                        Export
+                      </button>
+                      <button 
+                        title="Share Portfolio"
+                        className="px-3 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                      >
+                        Share
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-lg">
+                    <label htmlFor="performanceDate" className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
                       Performance Since:
                     </label>
                     <input
@@ -509,44 +628,80 @@ export default function UserProfile() {
                       value={performanceSinceDate}
                       onChange={(e) => setPerformanceSinceDate(e.target.value)}
                       max={new Date().toISOString().split('T')[0]}
-                      className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     {isLoadingHistorical && (
-                      <div className="text-xs text-gray-500">Loading...</div>
+                      <div className="text-xs text-blue-600 dark:text-blue-400 animate-pulse">Loading...</div>
                     )}
                   </div>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200 dark:border-gray-700">
-                        <th className="text-left py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">Stock Symbol</th>
-                        <th className="text-right py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">{new Date(performanceSinceDate + 'T00:00:00').toLocaleDateString()} Closing Price</th>
-                        <th className="text-right py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">{new Date().toLocaleDateString()} Current Price</th>
-                        <th className="text-right py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">P&L</th>
-                        <th className="text-right py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">P&L %</th>
-                        <th className="text-right py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">Dividend</th>
-                        <th className="text-right py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">Dividend %</th>
-                        <th className="text-right py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400">Total Return %</th>
+                  <table className="w-full min-w-full table-auto">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
+                      <tr className="border-b-2 border-gray-200 dark:border-gray-600">
+                        <SortableHeader field="symbol" className="text-left" tooltip="Stock ticker symbol">
+                          Stock Symbol
+                        </SortableHeader>
+                        <SortableHeader field="historicalPrice" className="text-right" tooltip={`Stock price on ${new Date(performanceSinceDate + 'T00:00:00').toLocaleDateString()}`}>
+                          Entry Price<br />
+                          <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                            {new Date(performanceSinceDate + 'T00:00:00').toLocaleDateString()}
+                          </span>
+                        </SortableHeader>
+                        <SortableHeader field="currentPrice" className="text-right" tooltip="Current market price">
+                          Current Price<br />
+                          <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                            {new Date().toLocaleDateString()}
+                          </span>
+                        </SortableHeader>
+                        <SortableHeader field="pnl" className="text-right" tooltip="Profit & Loss in dollars since entry">
+                          P&L
+                        </SortableHeader>
+                        <SortableHeader field="pnlPct" className="text-right" tooltip="Profit & Loss percentage since entry">
+                          P&L %
+                        </SortableHeader>
+                        <SortableHeader field="dividend" className="text-right" tooltip="Dividend payments received">
+                          Dividend
+                        </SortableHeader>
+                        <SortableHeader field="dividendPct" className="text-right" tooltip="Dividend yield percentage">
+                          Div. %
+                        </SortableHeader>
+                        <SortableHeader field="totalReturnPct" className="text-right" tooltip="Total return including dividends">
+                          Total Return %
+                        </SortableHeader>
                       </tr>
                     </thead>
                     <tbody>
                       {isLoadingPrices ? (
                         <tr>
                           <td colSpan={8} className="py-8 text-center text-gray-500 dark:text-gray-400">
-                            Loading portfolio data...
+                            <div className="flex flex-col items-center">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mb-2"></div>
+                              Loading portfolio data...
+                            </div>
+                          </td>
+                        </tr>
+                      ) : portfolio.positions.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="py-12 text-center">
+                            <div className="flex flex-col items-center">
+                              <div className="text-6xl mb-4">📊</div>
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Positions Found</h3>
+                              <p className="text-gray-500 dark:text-gray-400 mb-4">This portfolio doesn&apos;t have any stock positions yet.</p>
+                              <button className="btn-primary">Add Stocks</button>
+                            </div>
                           </td>
                         </tr>
                       ) : (
-                        portfolio.positions
+                        sortedPositions
                           .filter(position => {
                             if (activePortfolioTab === 'Total Value') return true
                             if (activePortfolioTab === 'Day Change') return position.return !== 0
                             if (activePortfolioTab === 'Total Return') return position.totalReturnPct !== undefined
                             return true
                           })
-                          .map((position) => (
-                          <tr key={position.symbol} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                          .map((position, index) => (
+                          <tr key={position.symbol} className={`border-b border-gray-100 dark:border-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer ${index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}`}>
                             <td className="py-3 px-2 font-medium text-blue-600 dark:text-blue-400">
                               {position.symbol}
                             </td>
@@ -563,23 +718,23 @@ export default function UserProfile() {
                               ${position.currentPrice.toFixed(2)}
                             </td>
                             <td className={`py-3 px-2 text-right font-mono text-sm font-semibold ${
-                              (position.pnl || 0) >= 0 ? 'text-gain' : 'text-loss'
+                              (position.pnl || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                             }`}>
-                              {position.pnl ? (
-                                `${(position.pnl >= 0) ? '+' : ''}$${position.pnl.toFixed(2)}`
+                              {position.pnl !== undefined ? (
+                                `${(position.pnl >= 0) ? '+' : ''}$${Math.abs(position.pnl).toFixed(2)}`
                               ) : (
-                                <span className="text-gray-400 text-xs">
+                                <span className="text-gray-400 text-xs animate-pulse">
                                   {isLoadingHistorical ? 'Loading...' : '$0.00'}
                                 </span>
                               )}
                             </td>
                             <td className={`py-3 px-2 text-right font-mono text-sm font-semibold ${
-                              (position.pnlPct || 0) >= 0 ? 'text-gain' : 'text-loss'
+                              (position.pnlPct || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                             }`}>
                               {position.pnlPct !== undefined ? (
                                 `${(position.pnlPct >= 0) ? '+' : ''}${position.pnlPct.toFixed(2)}%`
                               ) : (
-                                <span className="text-gray-400 text-xs">
+                                <span className="text-gray-400 text-xs animate-pulse">
                                   {isLoadingHistorical ? 'Loading...' : '0.00%'}
                                 </span>
                               )}
@@ -588,7 +743,7 @@ export default function UserProfile() {
                               {position.dividend !== undefined ? (
                                 `$${position.dividend.toFixed(2)}`
                               ) : (
-                                <span className="text-gray-400 text-xs">
+                                <span className="text-gray-400 text-xs animate-pulse">
                                   {isLoadingDividends ? 'Loading...' : '$0.00'}
                                 </span>
                               )}
@@ -597,18 +752,18 @@ export default function UserProfile() {
                               {position.dividendPct !== undefined ? (
                                 `${position.dividendPct.toFixed(2)}%`
                               ) : (
-                                <span className="text-gray-400 text-xs">
+                                <span className="text-gray-400 text-xs animate-pulse">
                                   {isLoadingDividends ? 'Loading...' : '0.00%'}
                                 </span>
                               )}
                             </td>
                             <td className={`py-3 px-2 text-right font-mono text-sm font-bold ${
-                              (position.totalReturnPct || 0) >= 0 ? 'text-gain' : 'text-loss'
+                              (position.totalReturnPct || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                             }`}>
                               {position.totalReturnPct !== undefined ? (
                                 `${(position.totalReturnPct >= 0) ? '+' : ''}${position.totalReturnPct.toFixed(2)}%`
                               ) : (
-                                <span className="text-gray-400 text-xs">
+                                <span className="text-gray-400 text-xs animate-pulse">
                                   {isLoadingHistorical || isLoadingDividends ? 'Loading...' : '0.00%'}
                                 </span>
                               )}
