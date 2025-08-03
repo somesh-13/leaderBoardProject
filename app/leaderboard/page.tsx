@@ -360,7 +360,7 @@ export default function Leaderboard() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link 
-                      href={`/profile/${entry.username}`}
+                      href="/profile"
                       className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
                     >
                       {entry.username}
