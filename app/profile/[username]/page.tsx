@@ -15,12 +15,19 @@ export async function generateStaticParams() {
   }))
 }
 
+// Calculate tier based on return percentage
+function calculateTier(returnValue: number): 'S' | 'A' | 'B' | 'C' {
+  if (returnValue >= 30) return 'S'
+  if (returnValue >= 15) return 'A'  
+  if (returnValue >= 10) return 'B'
+  return 'C'
+}
+
 // Get user data on the server side
 function getUserData(username: string) {
-  const users: Record<string, any> = {
+  const rawUsers: Record<string, any> = {
     'Matt': {
       username: 'Matt',
-      tier: 'S' as const,
       rank: 1,
       totalReturn: 45.2,
       followers: 2340,
@@ -29,7 +36,6 @@ function getUserData(username: string) {
     },
     'Amit': {
       username: 'Amit',
-      tier: 'S' as const,
       rank: 2,
       totalReturn: 42.8,
       followers: 1890,
@@ -38,7 +44,6 @@ function getUserData(username: string) {
     },
     'Steve': {
       username: 'Steve',
-      tier: 'S' as const,
       rank: 3,
       totalReturn: 39.5,
       followers: 1654,
@@ -47,7 +52,6 @@ function getUserData(username: string) {
     },
     'Tannor': {
       username: 'Tannor',
-      tier: 'S' as const,
       rank: 4,
       totalReturn: 37.1,
       followers: 1432,
@@ -56,7 +60,6 @@ function getUserData(username: string) {
     },
     'Kris': {
       username: 'Kris',
-      tier: 'S' as const,
       rank: 5,
       totalReturn: 34.7,
       followers: 1287,
@@ -65,7 +68,6 @@ function getUserData(username: string) {
     },
     'TradeMaster': {
       username: 'TradeMaster',
-      tier: 'A' as const,
       rank: 6,
       totalReturn: 22.5,
       followers: 1247,
@@ -74,7 +76,6 @@ function getUserData(username: string) {
     },
     'StockGuru': {
       username: 'StockGuru',
-      tier: 'A' as const,
       rank: 7,
       totalReturn: 18.2,
       followers: 897,
@@ -83,7 +84,6 @@ function getUserData(username: string) {
     },
     'InvestPro': {
       username: 'InvestPro',
-      tier: 'A' as const,
       rank: 8,
       totalReturn: 15.7,
       followers: 743,
@@ -92,7 +92,6 @@ function getUserData(username: string) {
     },
     'MarketWiz': {
       username: 'MarketWiz',
-      tier: 'B' as const,
       rank: 9,
       totalReturn: 12.4,
       followers: 623,
@@ -101,7 +100,6 @@ function getUserData(username: string) {
     },
     'BullRunner': {
       username: 'BullRunner',
-      tier: 'B' as const,
       rank: 10,
       totalReturn: 9.8,
       followers: 556,
@@ -109,15 +107,20 @@ function getUserData(username: string) {
       portfolio: ['MSFT', 'AAPL', 'GOOGL', 'AMZN']
     }
   }
-  
-  return users[username] || {
+
+  const userData = rawUsers[username] || {
     username: username,
-    tier: 'B' as const,
     rank: 10,
     totalReturn: 15.0,
     followers: 500,
     following: 50,
     portfolio: ['AAPL', 'MSFT', 'GOOGL']
+  }
+  
+  // Calculate tier based on performance
+  return {
+    ...userData,
+    tier: calculateTier(userData.totalReturn)
   }
 }
 

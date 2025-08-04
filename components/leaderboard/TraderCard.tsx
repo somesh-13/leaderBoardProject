@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { AnimatedTooltip } from '@/components/ui/animated-tooltip'
 
 interface LeaderboardEntry {
   rank: number
@@ -17,10 +16,9 @@ interface LeaderboardEntry {
 interface TraderCardProps {
   entry: LeaderboardEntry
   isLoadingReturns: boolean
-  getTierTooltipData: (tier: 'S' | 'A' | 'B' | 'C', traderName: string) => any
 }
 
-export default function TraderCard({ entry, isLoadingReturns, getTierTooltipData }: TraderCardProps) {
+export default function TraderCard({ entry, isLoadingReturns }: TraderCardProps) {
   const returnValue = entry.calculatedReturn !== undefined ? entry.calculatedReturn : entry.return
   
   const getPodiumIcon = (rank: number) => {
@@ -30,14 +28,8 @@ export default function TraderCard({ entry, isLoadingReturns, getTierTooltipData
     return null
   }
 
-  const getTierColor = (tier: string) => {
-    switch (tier) {
-      case 'S': return 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-white'
-      case 'A': return 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
-      case 'B': return 'bg-gradient-to-r from-green-500 to-green-600 text-white'
-      case 'C': return 'bg-gradient-to-r from-gray-500 to-gray-600 text-white'
-      default: return 'bg-gray-500 text-white'
-    }
+  const getTierBadgeUrl = (tier: string) => {
+    return `https://api.dicebear.com/9.x/initials/svg?seed=${tier}`
   }
 
   const getSectorColor = (sector: string) => {
@@ -87,11 +79,10 @@ export default function TraderCard({ entry, isLoadingReturns, getTierTooltipData
         </div>
         
         <div className="flex items-center">
-          <AnimatedTooltip 
-            items={[{
-              id: entry.rank,
-              ...getTierTooltipData(entry.tier, entry.username)
-            }]}
+          <img 
+            src={getTierBadgeUrl(entry.tier)}
+            alt={`${entry.tier} Tier`}
+            className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
           />
         </div>
       </div>
@@ -119,11 +110,8 @@ export default function TraderCard({ entry, isLoadingReturns, getTierTooltipData
         </div>
       </div>
 
-      {/* Tier & Sector Badges */}
-      <div className="flex justify-between items-center mb-3">
-        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getTierColor(entry.tier)}`}>
-          {entry.tier} Tier
-        </span>
+      {/* Sector Badge */}
+      <div className="flex justify-center mb-3">
         <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getSectorColor(entry.sector)}`}>
           {entry.sector}
         </span>

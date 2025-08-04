@@ -37,18 +37,26 @@ export default function Leaderboard() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
 
-  const mockData: LeaderboardEntry[] = useMemo(() => [
-    { rank: 1, username: 'Matt', return: 45.2, tier: 'S', sector: 'Technology', primaryStock: 'RKLB', portfolio: ['RKLB', 'AMZN', 'SOFI', 'ASTS', 'BRK.B', 'CELH', 'OSCR', 'EOG', 'BROS', 'ABCL'] },
-    { rank: 2, username: 'Amit', return: 42.8, tier: 'S', sector: 'Technology', primaryStock: 'PLTR', portfolio: ['PLTR', 'HOOD', 'TSLA', 'AMD', 'JPM', 'NBIS', 'GRAB', 'AAPL', 'V', 'DUOL'] },
-    { rank: 3, username: 'Steve', return: 39.5, tier: 'S', sector: 'Technology', primaryStock: 'META', portfolio: ['META', 'MSTR', 'MSFT', 'HIMS', 'AVGO', 'CRWD', 'NFLX', 'CRM', 'PYPL', 'MU'] },
-    { rank: 4, username: 'Tannor', return: 37.1, tier: 'S', sector: 'Technology', primaryStock: 'NVDA', portfolio: ['NVDA', 'NU', 'NOW', 'MELI', 'SHOP', 'TTD', 'ASML', 'APP', 'COIN', 'TSM'] },
-    { rank: 5, username: 'Kris', return: 34.7, tier: 'S', sector: 'Healthcare', primaryStock: 'UNH', portfolio: ['UNH', 'GOOGL', 'MRVL', 'AXON', 'ELF', 'ORCL', 'CSCO', 'LLY', 'NVO', 'TTWO'] },
-    { rank: 6, username: 'TradeMaster', return: 22.5, tier: 'A', sector: 'Technology', primaryStock: 'AAPL', portfolio: ['AAPL'] },
-    { rank: 7, username: 'StockGuru', return: 18.2, tier: 'A', sector: 'Technology', primaryStock: 'TSLA', portfolio: ['TSLA'] },
-    { rank: 8, username: 'InvestPro', return: 15.7, tier: 'A', sector: 'Healthcare', primaryStock: 'JNJ', portfolio: ['JNJ'] },
-    { rank: 9, username: 'MarketWiz', return: 12.4, tier: 'B', sector: 'Finance', primaryStock: 'JPM', portfolio: ['JPM'] },
-    { rank: 10, username: 'BullRunner', return: 9.8, tier: 'B', sector: 'Technology', primaryStock: 'MSFT', portfolio: ['MSFT'] },
-  ], [])
+  const mockData: LeaderboardEntry[] = useMemo(() => {
+    const rawData = [
+      { rank: 1, username: 'Matt', return: 45.2, sector: 'Technology', primaryStock: 'RKLB', portfolio: ['RKLB', 'AMZN', 'SOFI', 'ASTS', 'BRK.B', 'CELH', 'OSCR', 'EOG', 'BROS', 'ABCL'] },
+      { rank: 2, username: 'Amit', return: 42.8, sector: 'Technology', primaryStock: 'PLTR', portfolio: ['PLTR', 'HOOD', 'TSLA', 'AMD', 'JPM', 'NBIS', 'GRAB', 'AAPL', 'V', 'DUOL'] },
+      { rank: 3, username: 'Steve', return: 39.5, sector: 'Technology', primaryStock: 'META', portfolio: ['META', 'MSTR', 'MSFT', 'HIMS', 'AVGO', 'CRWD', 'NFLX', 'CRM', 'PYPL', 'MU'] },
+      { rank: 4, username: 'Tannor', return: 37.1, sector: 'Technology', primaryStock: 'NVDA', portfolio: ['NVDA', 'NU', 'NOW', 'MELI', 'SHOP', 'TTD', 'ASML', 'APP', 'COIN', 'TSM'] },
+      { rank: 5, username: 'Kris', return: 34.7, sector: 'Healthcare', primaryStock: 'UNH', portfolio: ['UNH', 'GOOGL', 'MRVL', 'AXON', 'ELF', 'ORCL', 'CSCO', 'LLY', 'NVO', 'TTWO'] },
+      { rank: 6, username: 'TradeMaster', return: 22.5, sector: 'Technology', primaryStock: 'AAPL', portfolio: ['AAPL'] },
+      { rank: 7, username: 'StockGuru', return: 18.2, sector: 'Technology', primaryStock: 'TSLA', portfolio: ['TSLA'] },
+      { rank: 8, username: 'InvestPro', return: 15.7, sector: 'Healthcare', primaryStock: 'JNJ', portfolio: ['JNJ'] },
+      { rank: 9, username: 'MarketWiz', return: 12.4, sector: 'Finance', primaryStock: 'JPM', portfolio: ['JPM'] },
+      { rank: 10, username: 'BullRunner', return: 9.8, sector: 'Technology', primaryStock: 'MSFT', portfolio: ['MSFT'] },
+    ]
+    
+    // Automatically calculate tiers based on returns
+    return rawData.map(entry => ({
+      ...entry,
+      tier: calculateTier(entry.return)
+    }))
+  }, [])
 
   // Calculate portfolio returns with equal $1,000 positions
   const calculatePortfolioReturn = useCallback(async (portfolio: string[]) => {
@@ -216,27 +224,38 @@ export default function Leaderboard() {
     return `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${backgroundColor}&colorful=1`
   }
 
+  const getTierBadgeUrl = (tier: 'S' | 'A' | 'B' | 'C') => {
+    return `https://api.dicebear.com/9.x/initials/svg?seed=${tier}`
+  }
+
+  const calculateTier = (returnValue: number): 'S' | 'A' | 'B' | 'C' => {
+    if (returnValue >= 30) return 'S'
+    if (returnValue >= 15) return 'A'  
+    if (returnValue >= 10) return 'B'
+    return 'C'
+  }
+
   const getTierTooltipData = (tier: 'S' | 'A' | 'B' | 'C', traderName: string) => {
     const tierData = {
       'S': {
         name: "S Tier",
         designation: "Elite • Top 5% of investors • Returns ≥30% • Legendary status with exceptional market performance",
-        image: getTraderIcon('S', `${traderName}-S-tier`)
+        image: getTierBadgeUrl('S')
       },
       'A': {
         name: "A Tier", 
         designation: "Expert • Strong performers • Returns 15-30% • Skilled traders with consistent profits",
-        image: getTraderIcon('A', `${traderName}-A-tier`)
+        image: getTierBadgeUrl('A')
       },
       'B': {
         name: "B Tier",
         designation: "Intermediate • Steady growth • Returns 10-15% • Solid foundation with room for improvement", 
-        image: getTraderIcon('B', `${traderName}-B-tier`)
+        image: getTierBadgeUrl('B')
       },
       'C': {
         name: "C Tier",
         designation: "Beginner • Learning phase • Returns 0-10% • Starting journey with basic market understanding",
-        image: getTraderIcon('C', `${traderName}-C-tier`)
+        image: getTierBadgeUrl('C')
       }
     }
     return tierData[tier]
@@ -384,7 +403,6 @@ export default function Leaderboard() {
             key={entry.rank}
             entry={entry}
             isLoadingReturns={isLoadingReturns}
-            getTierTooltipData={getTierTooltipData}
           />
         ))}
       </div>
@@ -447,11 +465,11 @@ export default function Leaderboard() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex justify-center">
-                      <AnimatedTooltip 
-                        items={[{
-                          id: entry.rank,
-                          ...getTierTooltipData(entry.tier, entry.username)
-                        }]}
+                      <img 
+                        src={getTierBadgeUrl(entry.tier)}
+                        alt={`${entry.tier} Tier`}
+                        className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-600"
+                        title={`${entry.tier} Tier`}
                       />
                     </div>
                   </td>
