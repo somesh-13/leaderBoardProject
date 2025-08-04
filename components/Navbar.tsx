@@ -19,7 +19,7 @@ export default function Navbar() {
     { name: 'Home', href: '/' },
     { name: 'Leaderboard', href: '/leaderboard' },
     { name: 'My Profile', href: '/profile' },
-    { name: 'Terminal', href: '/terminal' },
+    // { name: 'Terminal', href: '/terminal' }, // Hidden for now
   ]
 
   if (!mounted) return null
