@@ -28,7 +28,7 @@ interface Portfolio {
 }
 
 export default function Profile() {
-  const [activeTab, setActiveTab] = useState<'portfolio' | 'strategies' | 'performance'>('portfolio')
+  const [activeTab, setActiveTab] = useState<'portfolio' | 'strategies'>('portfolio')
 
   const mockUser = {
     username: 'TradeMaster',
@@ -127,9 +127,8 @@ export default function Profile() {
           <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
             <nav className="-mb-px flex space-x-8">
               {[
-                { id: 'portfolio', name: 'Portfolio' },
-                { id: 'strategies', name: 'Strategies' },
-                { id: 'performance', name: 'Performance' }
+                { id: 'portfolio', name: 'Portfolio & Performance' },
+                { id: 'strategies', name: 'Strategies' }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -146,9 +145,16 @@ export default function Profile() {
             </nav>
           </div>
 
-          {/* Portfolio Tab */}
+          {/* Portfolio & Performance Tab */}
           {activeTab === 'portfolio' && (
             <div className="space-y-6">
+              {/* Performance Chart */}
+              <div className="card">
+                <h3 className="text-lg font-semibold mb-6">Portfolio Performance</h3>
+                <PortfolioPerformanceChart user={mockUser} />
+              </div>
+
+              {/* Portfolio Summary Stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="card text-center">
                   <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
@@ -178,8 +184,9 @@ export default function Profile() {
                 </div>
               </div>
 
+              {/* Portfolio Positions Table */}
               <div className="card">
-                <h3 className="text-lg font-semibold mb-4">Positions</h3>
+                <h3 className="text-lg font-semibold mb-4">Current Positions</h3>
                 <div className="overflow-x-auto">
                   <table className="min-w-full">
                     <thead>
@@ -254,13 +261,6 @@ export default function Profile() {
             </div>
           )}
 
-          {/* Performance Tab */}
-          {activeTab === 'performance' && (
-            <div className="card">
-              <h3 className="text-lg font-semibold mb-6">Portfolio Performance</h3>
-              <PortfolioPerformanceChart user={mockUser} />
-            </div>
-          )}
         </div>
       </div>
     </div>
