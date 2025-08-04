@@ -37,6 +37,14 @@ export default function Leaderboard() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
 
+  // Calculate tier based on return percentage - moved before usage
+  const calculateTier = (returnValue: number): 'S' | 'A' | 'B' | 'C' => {
+    if (returnValue >= 30) return 'S'
+    if (returnValue >= 15) return 'A'  
+    if (returnValue >= 10) return 'B'
+    return 'C'
+  }
+
   const mockData: LeaderboardEntry[] = useMemo(() => {
     const rawData = [
       { rank: 1, username: 'Matt', return: 45.2, sector: 'Technology', primaryStock: 'RKLB', portfolio: ['RKLB', 'AMZN', 'SOFI', 'ASTS', 'BRK.B', 'CELH', 'OSCR', 'EOG', 'BROS', 'ABCL'] },
@@ -56,7 +64,7 @@ export default function Leaderboard() {
       ...entry,
       tier: calculateTier(entry.return)
     }))
-  }, [])
+  }, [calculateTier])
 
   // Calculate portfolio returns with equal $1,000 positions
   const calculatePortfolioReturn = useCallback(async (portfolio: string[]) => {
@@ -226,13 +234,6 @@ export default function Leaderboard() {
 
   const getTierBadgeUrl = (tier: 'S' | 'A' | 'B' | 'C') => {
     return `https://api.dicebear.com/9.x/initials/svg?seed=${tier}`
-  }
-
-  const calculateTier = (returnValue: number): 'S' | 'A' | 'B' | 'C' => {
-    if (returnValue >= 30) return 'S'
-    if (returnValue >= 15) return 'A'  
-    if (returnValue >= 10) return 'B'
-    return 'C'
   }
 
   const getTierTooltipData = (tier: 'S' | 'A' | 'B' | 'C', traderName: string) => {
