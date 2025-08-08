@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface LeaderboardEntry {
   rank: number
@@ -79,9 +80,11 @@ export default function TraderCard({ entry, isLoadingReturns }: TraderCardProps)
         </div>
         
         <div className="flex items-center">
-          <img 
+          <Image 
             src={getTierBadgeUrl(entry.tier)}
             alt={`${entry.tier} Tier`}
+            width={40}
+            height={40}
             className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
           />
         </div>

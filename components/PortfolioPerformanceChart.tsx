@@ -13,7 +13,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
-import { getPriceWithFallback, getMultipleHistoricalPrices } from '@/lib/finnhub';
+import { getPriceWithFallback, getMultipleHistoricalPrices } from '@/lib/polygon';
 
 ChartJS.register(
   CategoryScale,

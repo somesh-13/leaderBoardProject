@@ -3,23 +3,31 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node test-runner.js && next dev",
+    "build": "node test-runner.js && next build",
     "start": "next start",
     "lint": "next lint",
-    "export": "next build && next export"
+    "export": "next build && next export",
+    "test": "node __tests__/api-validation.test.js",
+    "test:api": "node __tests__/api-validation.test.js",
+    "test:watch": "node __tests__/file-watcher.js",
+    "validate": "node test-runner.js"
   },
   "dependencies": {
     "chart.js": "^4.4.0",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.1",
     "lucide-react": "^0.536.0",
     "motion": "^12.23.12",
     "next": "14.0.4",
     "next-themes": "^0.3.0",
+    "node-fetch": "^3.3.2",
     "react": "^18",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18",
-    "tailwind-merge": "^3.3.1"
+    "swr": "^2.3.4",
+    "tailwind-merge": "^3.3.1",
+    "zustand": "^5.0.7"
   },
   "devDependencies": {
     "@modelcontextprotocol/server-github": "^0.3.0",

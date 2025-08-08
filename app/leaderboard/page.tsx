@@ -1,204 +1,68 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Filter, RotateCcw } from 'lucide-react'
-import { getPriceWithFallback, getMultipleHistoricalPrices } from '@/lib/finnhub'
 import { AnimatedTooltip } from '@/components/ui/animated-tooltip'
 import TraderCard from '@/components/leaderboard/TraderCard'
 import MobileFilters from '@/components/leaderboard/MobileFilters'
 import FloatingActions from '@/components/leaderboard/FloatingActions'
 
-interface LeaderboardEntry {
-  rank: number
-  username: string
-  return: number
-  calculatedReturn?: number
-  tier: 'S' | 'A' | 'B' | 'C'
-  sector: string
-  primaryStock: string
-  portfolio: string[]
-}
-
-type SortField = 'rank' | 'username' | 'return' | 'tier' | 'primaryStock' | 'sector'
-type SortDirection = 'asc' | 'desc'
+// Import new hooks and types
+import { useInitializeDemoData, useLeaderboardData, usePortfolioFilters, useAutoRefresh } from '@/lib/hooks/usePortfolioData'
+import { usePortfolioStore } from '@/lib/store/portfolioStore'
+import { SortField } from '@/lib/types/portfolio'
 
 export default function Leaderboard() {
-  const [filterSector, setFilterSector] = useState('all')
-  const [filterCompany, setFilterCompany] = useState('all')
-  const [filterAsset, setFilterAsset] = useState('all')
-  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([])
-  const [isLoadingReturns, setIsLoadingReturns] = useState(true)
-  const [performanceSinceDate, setPerformanceSinceDate] = useState(() => {
-    // Default to June 16, 2025 (Monday - valid trading day) for demo purposes
-    return '2025-06-16'
-  })
-  const [sortField, setSortField] = useState<SortField>('rank')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  // Initialize demo data on first load
+  useInitializeDemoData()
+  
+  // Use global state hooks
+  const { leaderboard, loading: isLoadingReturns } = useLeaderboardData()
+  const { filters, sortField, sortDirection, setFilters, setSorting } = usePortfolioFilters()
+  const store = usePortfolioStore()
+  
+  // Local UI state
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
+  
+  // Auto-refresh every 5 minutes
+  useAutoRefresh(5 * 60 * 1000)
+  
+  // Extract filter values for backward compatibility
+  const filterSector = filters.sector
+  const filterCompany = filters.company
+  const filterAsset = filters.asset
+  const performanceSinceDate = store.performanceSinceDate
+  
+  // Update filter functions
+  const setFilterSector = (sector: string) => setFilters({ sector })
+  const setFilterCompany = (company: string) => setFilters({ company })
+  const setFilterAsset = (asset: string) => setFilters({ asset })
+  const setPerformanceSinceDate = (date: string) => store.setPerformanceSinceDate(date)
 
-  // Calculate tier based on return percentage - moved before usage
-  const calculateTier = (returnValue: number): 'S' | 'A' | 'B' | 'C' => {
-    if (returnValue >= 30) return 'S'
-    if (returnValue >= 15) return 'A'  
-    if (returnValue >= 10) return 'B'
-    return 'C'
+  // Get leaderboard data from global state - no need for mock data anymore
+  const leaderboardData = leaderboard
+  
+  // Handle refresh functionality
+  // const handleRefresh = () => {
+  //   console.log('🔄 Refreshing leaderboard data...')
+  //   refreshAll()
+  // }
+  
+  // Handle sorting with global state
+  const handleSortClick = (field: SortField) => {
+    const newDirection = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc'
+    setSorting(field, newDirection)
   }
 
-  const mockData: LeaderboardEntry[] = useMemo(() => {
-    const rawData = [
-      { rank: 1, username: 'Matt', return: 45.2, sector: 'Technology', primaryStock: 'RKLB', portfolio: ['RKLB', 'AMZN', 'SOFI', 'ASTS', 'BRK.B', 'CELH', 'OSCR', 'EOG', 'BROS', 'ABCL'] },
-      { rank: 2, username: 'Amit', return: 42.8, sector: 'Technology', primaryStock: 'PLTR', portfolio: ['PLTR', 'HOOD', 'TSLA', 'AMD', 'JPM', 'NBIS', 'GRAB', 'AAPL', 'V', 'DUOL'] },
-      { rank: 3, username: 'Steve', return: 39.5, sector: 'Technology', primaryStock: 'META', portfolio: ['META', 'MSTR', 'MSFT', 'HIMS', 'AVGO', 'CRWD', 'NFLX', 'CRM', 'PYPL', 'MU'] },
-      { rank: 4, username: 'Tannor', return: 37.1, sector: 'Technology', primaryStock: 'NVDA', portfolio: ['NVDA', 'NU', 'NOW', 'MELI', 'SHOP', 'TTD', 'ASML', 'APP', 'COIN', 'TSM'] },
-      { rank: 5, username: 'Kris', return: 34.7, sector: 'Healthcare', primaryStock: 'UNH', portfolio: ['UNH', 'GOOGL', 'MRVL', 'AXON', 'ELF', 'ORCL', 'CSCO', 'LLY', 'NVO', 'TTWO'] },
-      { rank: 6, username: 'TradeMaster', return: 22.5, sector: 'Technology', primaryStock: 'AAPL', portfolio: ['AAPL'] },
-      { rank: 7, username: 'StockGuru', return: 18.2, sector: 'Technology', primaryStock: 'TSLA', portfolio: ['TSLA'] },
-      { rank: 8, username: 'InvestPro', return: 15.7, sector: 'Healthcare', primaryStock: 'JNJ', portfolio: ['JNJ'] },
-      { rank: 9, username: 'MarketWiz', return: 12.4, sector: 'Finance', primaryStock: 'JPM', portfolio: ['JPM'] },
-      { rank: 10, username: 'BullRunner', return: 9.8, sector: 'Technology', primaryStock: 'MSFT', portfolio: ['MSFT'] },
-    ]
-    
-    // Automatically calculate tiers based on returns
-    return rawData.map(entry => ({
-      ...entry,
-      tier: calculateTier(entry.return)
-    }))
-  }, [calculateTier])
-
-  // Calculate portfolio returns with equal $1,000 positions
-  const calculatePortfolioReturn = useCallback(async (portfolio: string[]) => {
-    try {
-      // Get current prices
-      const currentPrices: Record<string, number> = {}
-      await Promise.all(
-        portfolio.map(async (symbol) => {
-          const { price } = await getPriceWithFallback(symbol)
-          currentPrices[symbol] = price
-        })
-      )
-
-      // Get historical prices
-      const historicalPrices = await getMultipleHistoricalPrices(portfolio, performanceSinceDate)
-
-      let initialTotal = 0
-      let finalTotal = 0
-
-      portfolio.forEach(symbol => {
-        const currentPrice = currentPrices[symbol]
-        const historicalPrice = historicalPrices[symbol]
-        
-        if (currentPrice && historicalPrice && historicalPrice > 0) {
-          const investment = 1000 // $1,000 per stock
-          const shares = investment / historicalPrice
-          const finalValue = shares * currentPrice
-          
-          initialTotal += investment
-          finalTotal += finalValue
-        }
-      })
-
-      if (initialTotal > 0) {
-        const portfolioPL = finalTotal - initialTotal
-        const portfolioReturnPct = (portfolioPL / initialTotal) * 100
-        return portfolioReturnPct
-      }
-      
-      return 0
-    } catch (error) {
-      console.error('Error calculating portfolio return:', error)
-      return 0
-    }
-  }, [performanceSinceDate])
-
-  useEffect(() => {
-    const calculateAllReturns = async () => {
-      setIsLoadingReturns(true)
-      
-      const updatedData = await Promise.all(
-        mockData.map(async (entry) => {
-          const calculatedReturn = await calculatePortfolioReturn(entry.portfolio)
-          return {
-            ...entry,
-            calculatedReturn
-          }
-        })
-      )
-
-      // Sort by calculated return and update ranks
-      updatedData.sort((a, b) => (b.calculatedReturn || 0) - (a.calculatedReturn || 0))
-      updatedData.forEach((entry, index) => {
-        entry.rank = index + 1
-      })
-
-      setLeaderboardData(updatedData)
-      setIsLoadingReturns(false)
-    }
-
-    calculateAllReturns()
-    // eslint-disable-next-line react-hooks/exhaustive-deps  
-  }, [performanceSinceDate])
-
-  const handleSort = useCallback((field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortField(field)
-      setSortDirection('asc')
-    }
-  }, [sortField, sortDirection])
-
-  const sortedAndFilteredData = useMemo(() => {
-    const data = (leaderboardData.length > 0 ? leaderboardData : mockData).filter(entry => {
-      if (filterSector !== 'all' && entry.sector !== filterSector) return false
-      if (filterCompany !== 'all' && entry.primaryStock !== filterCompany) return false
-      return true
-    })
-
-    return [...data].sort((a, b) => {
-      let aValue: any
-      let bValue: any
-
-      switch (sortField) {
-        case 'rank':
-          aValue = a.rank
-          bValue = b.rank
-          break
-        case 'username':
-          aValue = a.username.toLowerCase()
-          bValue = b.username.toLowerCase()
-          break
-        case 'return':
-          aValue = a.calculatedReturn !== undefined ? a.calculatedReturn : a.return
-          bValue = b.calculatedReturn !== undefined ? b.calculatedReturn : b.return
-          break
-        case 'tier':
-          const tierOrder = { 'S': 4, 'A': 3, 'B': 2, 'C': 1 }
-          aValue = tierOrder[a.tier]
-          bValue = tierOrder[b.tier]
-          break
-        case 'primaryStock':
-          aValue = a.primaryStock.toLowerCase()
-          bValue = b.primaryStock.toLowerCase()
-          break
-        case 'sector':
-          aValue = a.sector.toLowerCase()
-          bValue = b.sector.toLowerCase()
-          break
-        default:
-          return 0
-      }
-
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
-      return 0
-    })
-  }, [leaderboardData, mockData, filterSector, filterCompany, sortField, sortDirection])
+  // Use the filtered and sorted data directly from global state
+  const sortedAndFilteredData = leaderboardData
 
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <th 
       className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors select-none"
-      onClick={() => handleSort(field)}
+      onClick={() => handleSortClick(field)}
     >
       <div className="flex items-center space-x-1">
         <span>{children}</span>
@@ -210,57 +74,50 @@ export default function Leaderboard() {
     </th>
   )
 
-  // Tier-to-Icon Mapping based on Wall Street Bets documentation
-  const tierIconMap = {
-    'S': 'bottts',      // Bold and unique icons for top traders
-    'A': 'avataaars',   // Clean avatars for high performers  
-    'B': 'miniavs',     // Simplified but friendly avatars for solid performers
-    'C': 'micah',       // Approachable, lighthearted icons for average entrants
-    'F': 'identicon'    // Abstract/generic icons for lowest tier
-  }
 
-  const getTraderIcon = (tier: 'S' | 'A' | 'B' | 'C' | 'F', seed: string) => {
-    const style = tierIconMap[tier] || 'identicon'
-    const backgroundColor = {
-      'S': 'ffd700,ff6b6b,4ecdc4', // Gold/vibrant for elite
-      'A': 'c0392b,e74c3c,3498db', // Red/blue for expert
-      'B': 'f39c12,e67e22,2ecc71', // Orange/green for intermediate
-      'C': '95a5a6,7f8c8d,34495e', // Gray for beginner
-      'F': '2c3e50,34495e,7f8c8d'  // Dark gray for lowest
-    }[tier] || '95a5a6,7f8c8d,34495e'
+
+  // const getTraderIcon = (tier: 'S' | 'A' | 'B' | 'C' | 'F', seed: string) => {
+  //   const style = tierIconMap[tier] || 'identicon'
+  //   const backgroundColor = {
+  //     'S': 'ffd700,ff6b6b,4ecdc4', // Gold/vibrant for elite
+  //     'A': 'c0392b,e74c3c,3498db', // Red/blue for expert
+  //     'B': 'f39c12,e67e22,2ecc71', // Orange/green for intermediate
+  //     'C': '95a5a6,7f8c8d,34495e', // Gray for beginner
+  //     'F': '2c3e50,34495e,7f8c8d'  // Dark gray for lowest
+  //   }[tier] || '95a5a6,7f8c8d,34495e'
     
-    return `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${backgroundColor}&colorful=1`
-  }
+  //   return `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${backgroundColor}&colorful=1`
+  // }
 
   const getTierBadgeUrl = (tier: 'S' | 'A' | 'B' | 'C') => {
     return `https://api.dicebear.com/9.x/initials/svg?seed=${tier}`
   }
 
-  const getTierTooltipData = (tier: 'S' | 'A' | 'B' | 'C', traderName: string) => {
-    const tierData = {
-      'S': {
-        name: "S Tier",
-        designation: "Elite • Top 5% of investors • Returns ≥30% • Legendary status with exceptional market performance",
-        image: getTierBadgeUrl('S')
-      },
-      'A': {
-        name: "A Tier", 
-        designation: "Expert • Strong performers • Returns 15-30% • Skilled traders with consistent profits",
-        image: getTierBadgeUrl('A')
-      },
-      'B': {
-        name: "B Tier",
-        designation: "Intermediate • Steady growth • Returns 10-15% • Solid foundation with room for improvement", 
-        image: getTierBadgeUrl('B')
-      },
-      'C': {
-        name: "C Tier",
-        designation: "Beginner • Learning phase • Returns 0-10% • Starting journey with basic market understanding",
-        image: getTierBadgeUrl('C')
-      }
-    }
-    return tierData[tier]
-  }
+  // const getTierTooltipData = (tier: 'S' | 'A' | 'B' | 'C') => {
+  //   const tierData = {
+  //     'S': {
+  //       name: "S Tier",
+  //       designation: "Elite • Top 5% of investors • Returns ≥30% • Legendary status with exceptional market performance",
+  //       image: getTierBadgeUrl('S')
+  //     },
+  //     'A': {
+  //       name: "A Tier", 
+  //       designation: "Expert • Strong performers • Returns 15-30% • Skilled traders with consistent profits",
+  //       image: getTierBadgeUrl('A')
+  //     },
+  //     'B': {
+  //       name: "B Tier",
+  //       designation: "Intermediate • Steady growth • Returns 10-15% • Solid foundation with room for improvement", 
+  //       image: getTierBadgeUrl('B')
+  //     },
+  //     'C': {
+  //       name: "C Tier",
+  //       designation: "Beginner • Learning phase • Returns 0-10% • Starting journey with basic market understanding",
+  //       image: getTierBadgeUrl('C')
+  //     }
+  //   }
+  //   return tierData[tier]
+  // }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -466,9 +323,11 @@ export default function Leaderboard() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex justify-center">
-                      <img 
+                      <Image 
                         src={getTierBadgeUrl(entry.tier)}
                         alt={`${entry.tier} Tier`}
+                        width={32}
+                        height={32}
                         className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-600"
                         title={`${entry.tier} Tier`}
                       />

@@ -16,7 +16,13 @@
       "mcp__git__git_stash",
       "mcp__git__git_set_working_dir",
       "Bash(rm:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "mcp__git__git_push",
+      "mcp__filesystem__list_directory",
+      "mcp__filesystem__read_text_file",
+      "mcp__filesystem__write_file",
+      "mcp__filesystem__edit_file",
+      "Bash(node:*)"
     ],
     "deny": []
   }

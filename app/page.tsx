@@ -4,7 +4,7 @@ import Link from 'next/link'
 import TierBadge from '@/components/TierBadge'
 import { BackgroundLines } from '@/components/ui/background-lines'
 import { useState, useEffect } from 'react'
-import { getPriceWithFallback } from '@/lib/finnhub'
+import { getPriceWithFallback } from '@/lib/polygon'
 
 export default function Home() {
   const mockStats = {
@@ -63,8 +63,8 @@ export default function Home() {
               Win!
             </h1>
             <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 max-w-4xl mx-auto mb-12 leading-relaxed font-medium">
-              Test your trading strategies against the best investors in our gamified stock trading platform. 
-              Climb the tiers, perfect your approach, and dominate the leaderboard.
+              In a world where you can buy even the smelliest coins, why not invest in true market legends? 
+              Tokenize your trading skills, compete against the best, and claim your spot atop the leaderboard!
             </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Link href="/leaderboard" className="btn-primary text-center text-lg px-8 py-4 font-semibold transform hover:scale-105 transition-all">
