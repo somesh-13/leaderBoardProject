@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import Navbar from '@/components/Navbar'
-import CSPScript from './csp-script'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -19,8 +18,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <meta 
+          httpEquiv="Content-Security-Policy" 
+          content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src 'self' fonts.gstatic.com data:; img-src 'self' data: https: api.dicebear.com; connect-src 'self' https://api.polygon.io; object-src 'none'; base-uri 'self';"
+        />
+      </head>
       <body className={inter.className}>
-        <CSPScript />
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <Navbar />
           <main className="min-h-screen">
