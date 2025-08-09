@@ -4,7 +4,7 @@ import Link from 'next/link'
 import TierBadge from '@/components/TierBadge'
 import { BackgroundLines } from '@/components/ui/background-lines'
 import { useState, useEffect } from 'react'
-import { getPriceWithFallback } from '@/lib/polygon'
+import { getCurrentPrice } from '@/lib/polygon'
 
 export default function Home() {
   const mockStats = {
@@ -33,7 +33,7 @@ export default function Home() {
       
       const updatedAssets = await Promise.all(
         assetTemplates.map(async (asset) => {
-          const { price, change } = await getPriceWithFallback(asset.symbol)
+          const { price, change } = await getCurrentPrice(asset.symbol)
           return {
             ...asset,
             value: price,

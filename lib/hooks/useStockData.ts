@@ -43,7 +43,7 @@ export function useStockPrices(symbols: string[], options: {
   } = options
 
   // Create a stable key for SWR
-  const sortedSymbols = [...new Set(symbols)].filter(Boolean).sort()
+  const sortedSymbols = Array.from(new Set(symbols)).filter(Boolean).sort()
   const swrKey = sortedSymbols.length > 0 ? ['/api/stock-prices', sortedSymbols] : null
 
   const {
@@ -54,7 +54,7 @@ export function useStockPrices(symbols: string[], options: {
     mutate
   } = useSWR(
     swrKey,
-    ([url, symbols]) => fetcher(url, symbols),
+    ([url, symbols]) => fetcher(url as string, symbols as string[]),
     {
       refreshInterval,
       dedupingInterval,
@@ -161,7 +161,7 @@ export function useRealTimeStockData(symbols: string[]) {
 export function useStockDataManual() {
   const fetchStocks = async (symbols: string[]) => {
     try {
-      const uniqueSymbols = [...new Set(symbols)].filter(Boolean)
+      const uniqueSymbols = Array.from(new Set(symbols)).filter(Boolean)
       if (uniqueSymbols.length === 0) return {}
 
       return await fetcher('/api/stock-prices', uniqueSymbols)

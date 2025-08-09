@@ -76,7 +76,7 @@ export default function ProfilePage() {
     return currentValue > topValue ? position : top
   }, portfolio.positions[0])
 
-  const worstPosition = portfolio.positions.reduce((worst, position) => {
+  const worstPosition = portfolio.positions.reduce((worst: any, position) => {
     const stockData = stocks[position.symbol]
     if (!stockData) return worst
     

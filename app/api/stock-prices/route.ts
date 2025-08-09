@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getPriceWithFallback } from '@/lib/polygon'
+import { getCurrentPrice } from '@/lib/polygon'
 import { StockData, ApiResponse, StockPriceRequest, StockPriceResponse } from '@/lib/types/portfolio'
 
 // Force dynamic rendering for this API route
@@ -71,7 +71,7 @@ async function fetchStockData(symbol: string): Promise<StockData | null> {
   try {
     console.log(`🔍 Fetching REAL stock data from Polygon for ${symbol}`)
     
-    const result = await getPriceWithFallback(symbol)
+    const result = await getCurrentPrice(symbol)
     
     const stockData: StockData = {
       symbol: symbol.toUpperCase(),
@@ -248,12 +248,12 @@ if (typeof setInterval !== 'undefined') {
     const now = Date.now()
     let cleaned = 0
     
-    for (const [symbol, cached] of stockCache.entries()) {
+    stockCache.forEach((cached, symbol) => {
       if (now - cached.timestamp > CACHE_DURATION) {
         stockCache.delete(symbol)
         cleaned++
       }
-    }
+    })
     
     if (cleaned > 0) {
       console.log(`🧹 Cleaned ${cleaned} expired cache entries`)

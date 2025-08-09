@@ -13,7 +13,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
-import { getPriceWithFallback, getMultipleHistoricalPrices } from '@/lib/polygon';
+import { getCurrentPrice, getMultipleHistoricalPrices } from '@/lib/polygon';
 
 ChartJS.register(
   CategoryScale,
@@ -107,7 +107,7 @@ export default function PortfolioPerformanceChart({ user, className = "" }: Port
       // Fetch current prices
       const currentPricesData = await Promise.all(
         user.portfolio.map(async (symbol) => {
-          const { price } = await getPriceWithFallback(symbol);
+          const { price } = await getCurrentPrice(symbol);
           return { symbol, price };
         })
       );

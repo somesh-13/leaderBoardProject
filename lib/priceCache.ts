@@ -1,4 +1,4 @@
-// Price Cache Utility for Finnhub API
+// Price Cache Utility for Polygon API
 // Implements in-memory caching to reduce API calls and improve performance
 // Compatible with both client-side and server-side Next.js usage
 

@@ -1,5 +1,5 @@
 // Polygon.io API Integration for Wall Street Bets Profile
-// Drop-in replacement for Finnhub with enhanced performance and accuracy
+// Polygon.io API integration with enhanced performance and accuracy
 // Note: Temporarily using simplified caching to fix API route
 // TODO: Re-enable full priceCache integration after testing
 
@@ -139,8 +139,10 @@ export async function fetchPolygonEndpoint<T>(
       throw new Error(`Polygon API Error: ${data.error || 'Unknown error'}`)
     }
     
-    if (data.status !== 'OK') {
+    if (data.status !== 'OK' && data.status !== 'DELAYED') {
       console.warn(`⚠️ Polygon API Warning: Status ${data.status} for ${endpoint}`)
+    } else if (data.status === 'DELAYED') {
+      console.log(`📊 Polygon API Info: Using delayed data for ${endpoint}`)
     }
     
     return data as T
@@ -474,8 +476,8 @@ async function fetchCurrentPriceFromAPI(symbol: string): Promise<{ price: number
 const priceCache = new Map<string, { price: number; change: number; timestamp: number }>()
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
-// Get price with fallback to mock data (with caching)
-export async function getPriceWithFallback(symbol: string): Promise<{ price: number; change: number }> {
+// Get current price with caching and fallback to mock data in development
+export async function getCurrentPrice(symbol: string): Promise<{ price: number; change: number }> {
   console.log(`🔍 Getting current price for ${symbol}`)
   
   // Check cache first
@@ -635,7 +637,7 @@ export async function prefetchPortfolioSymbols(symbols: string[], date: string):
   console.log(`🚀 Prefetching Polygon data for ${symbols.length} symbols...`)
   
   // Prefetch current prices
-  const currentPricePromises = symbols.slice(0, 5).map(symbol => getPriceWithFallback(symbol))
+  const currentPricePromises = symbols.slice(0, 5).map(symbol => getCurrentPrice(symbol))
   await Promise.allSettled(currentPricePromises)
   
   // Prefetch historical prices

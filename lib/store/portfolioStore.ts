@@ -234,7 +234,7 @@ export const usePortfolioStore = create<PortfolioStore>()(
 
         // Data Fetching Actions - Direct Polygon API calls
         fetchStockPrices: async (symbols) => {
-          const uniqueSymbols = [...new Set(symbols)].filter(Boolean)
+          const uniqueSymbols = Array.from(new Set(symbols)).filter(Boolean)
           if (uniqueSymbols.length === 0) return
 
           set({ stocksLoading: true, stocksError: null })
@@ -269,7 +269,7 @@ export const usePortfolioStore = create<PortfolioStore>()(
 
                 const data = await response.json()
                 
-                if (data.status === 'OK' && data.results && data.results.p > 0) {
+                if ((data.status === 'OK' || data.status === 'DELAYED') && data.results && data.results.p > 0) {
                   const price = data.results.p
                   
                   // Calculate change (simplified - using 2% random for demo)
@@ -285,7 +285,8 @@ export const usePortfolioStore = create<PortfolioStore>()(
                     previousClose: price * (1 - changePercent / 100)
                   }
                   
-                  console.log(`✅ Got REAL price for ${symbol}: $${price.toFixed(2)} from Polygon`)
+                  const dataType = data.status === 'DELAYED' ? 'delayed' : 'real-time'
+                  console.log(`✅ Got ${dataType} price for ${symbol}: $${price.toFixed(2)} from Polygon`)
                   
                 } else {
                   console.warn(`⚠️ Invalid data from Polygon for ${symbol}:`, data.status)
@@ -453,7 +454,7 @@ export const usePortfolioStore = create<PortfolioStore>()(
               bVal = bVal.toLowerCase()
             }
             
-            const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+            const comparison = (aVal ?? 0) < (bVal ?? 0) ? -1 : (aVal ?? 0) > (bVal ?? 0) ? 1 : 0
             return sortDirection === 'desc' ? -comparison : comparison
           })
         }
