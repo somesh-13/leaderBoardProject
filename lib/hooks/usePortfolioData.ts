@@ -9,138 +9,50 @@ import { useEffect, useMemo } from 'react'
 import { usePortfolioStore } from '@/lib/store/portfolioStore'
 import { calculateCompletePortfolio } from '@/lib/utils/portfolioCalculations'
 import { Position, Portfolio, LeaderboardEntry } from '@/lib/types/portfolio'
+import { INITIAL_PORTFOLIOS } from '@/lib/data/initialPortfolios'
 
 /**
  * Hook to initialize portfolio data with mock/demo data
  */
 export function useInitializeDemoData() {
-  const { setPortfolios, fetchStockPrices, refreshLeaderboard } = usePortfolioStore()
+  const { setPortfolios, setLeaderboard, portfolios } = usePortfolioStore()
 
   useEffect(() => {
-    // Demo portfolio data
-    const demoPortfolios = {
-      'matt': {
-        userId: 'matt',
-        username: 'Matt', 
-        positions: [
-          { symbol: 'RKLB', shares: 100, avgPrice: 12.50, sector: 'Aerospace' },
-          { symbol: 'AMZN', shares: 5, avgPrice: 145.00, sector: 'Technology' },
-          { symbol: 'SOFI', shares: 200, avgPrice: 7.25, sector: 'Financial' },
-          { symbol: 'ASTS', shares: 150, avgPrice: 11.80, sector: 'Aerospace' },
-          { symbol: 'BRK.B', shares: 10, avgPrice: 340.00, sector: 'Financial' }
-        ],
-        totalValue: 0,
-        totalInvested: 0,
-        totalReturn: 0,
-        totalReturnPercent: 45.2,
-        dayChange: 0,
-        dayChangePercent: 0,
-        tier: 'S' as const,
-        sector: 'Aerospace',
-        primaryStock: 'RKLB',
-        lastCalculated: Date.now()
-      },
-      'amit': {
-        userId: 'amit',
-        username: 'Amit',
-        positions: [
-          { symbol: 'PLTR', shares: 50, avgPrice: 120.00, sector: 'Technology' },
-          { symbol: 'HOOD', shares: 75, avgPrice: 85.00, sector: 'Financial' },
-          { symbol: 'TSLA', shares: 8, avgPrice: 280.00, sector: 'Automotive' },
-          { symbol: 'AMD', shares: 25, avgPrice: 140.00, sector: 'Technology' }
-        ],
-        totalValue: 0,
-        totalInvested: 0, 
-        totalReturn: 0,
-        totalReturnPercent: 42.8,
-        dayChange: 0,
-        dayChangePercent: 0,
-        tier: 'S' as const,
-        sector: 'Technology',
-        primaryStock: 'PLTR',
-        lastCalculated: Date.now()
-      },
-      'steve': {
-        userId: 'steve',
-        username: 'Steve',
-        positions: [
-          { symbol: 'META', shares: 15, avgPrice: 275.00, sector: 'Technology' },
-          { symbol: 'MSTR', shares: 12, avgPrice: 160.00, sector: 'Technology' },
-          { symbol: 'MSFT', shares: 20, avgPrice: 300.00, sector: 'Technology' },
-          { symbol: 'HIMS', shares: 400, avgPrice: 9.50, sector: 'Healthcare' }
-        ],
-        totalValue: 0,
-        totalInvested: 0,
-        totalReturn: 0, 
-        totalReturnPercent: 38.7,
-        dayChange: 0,
-        dayChangePercent: 0,
-        tier: 'A' as const,
-        sector: 'Technology',
-        primaryStock: 'META',
-        lastCalculated: Date.now()
-      },
-      'tannor': {
-        userId: 'tannor', 
-        username: 'Tannor',
-        positions: [
-          { symbol: 'NVDA', shares: 6, avgPrice: 420.00, sector: 'Technology' },
-          { symbol: 'NU', shares: 300, avgPrice: 7.50, sector: 'Financial' },
-          { symbol: 'NOW', shares: 4, avgPrice: 520.00, sector: 'Technology' },
-          { symbol: 'MELI', shares: 2, avgPrice: 1100.00, sector: 'Technology' }
-        ],
-        totalValue: 0,
-        totalInvested: 0,
-        totalReturn: 0,
-        totalReturnPercent: 31.5,
-        dayChange: 0,
-        dayChangePercent: 0,
-        tier: 'A' as const,
-        sector: 'Technology',
-        primaryStock: 'NVDA',
-        lastCalculated: Date.now()
-      },
-      'kris': {
-        userId: 'kris',
-        username: 'Kris', 
-        positions: [
-          { symbol: 'UNH', shares: 8, avgPrice: 420.00, sector: 'Healthcare' },
-          { symbol: 'GOOGL', shares: 10, avgPrice: 120.00, sector: 'Technology' },
-          { symbol: 'MRVL', shares: 50, avgPrice: 52.00, sector: 'Technology' },
-          { symbol: 'AXON', shares: 25, avgPrice: 150.00, sector: 'Technology' }
-        ],
-        totalValue: 0,
-        totalInvested: 0,
-        totalReturn: 0,
-        totalReturnPercent: 28.9,
-        dayChange: 0,
-        dayChangePercent: 0,
-        tier: 'A' as const,
-        sector: 'Technology',
-        primaryStock: 'UNH',
-        lastCalculated: Date.now()
-      }
+    console.log('🔄 Initializing portfolios with pre-calculated performance data')
+    console.log('🔍 Current portfolios count:', Object.keys(portfolios).length)
+
+    // Only initialize if portfolios are empty
+    if (Object.keys(portfolios).length === 0) {
+      console.log('📦 Setting initial portfolios...')
+      // Set portfolios with pre-calculated performance data
+      setPortfolios(INITIAL_PORTFOLIOS)
+      
+      // Generate leaderboard entries directly from initial portfolios
+      const leaderboard = Object.values(INITIAL_PORTFOLIOS)
+        .map((portfolio, index) => ({
+          rank: index + 1,
+          username: portfolio.username,
+          return: portfolio.totalReturnPercent,
+          tier: portfolio.tier,
+          sector: portfolio.sector,
+          primaryStock: portfolio.primaryStock,
+          portfolio: portfolio.positions.map(p => p.symbol),
+          totalValue: portfolio.totalValue,
+          dayChange: portfolio.dayChange,
+          positions: portfolio.positions
+        }))
+        .sort((a, b) => b.return - a.return)
+        .map((entry, index) => ({ ...entry, rank: index + 1 }))
+      
+      // Set leaderboard directly
+      setLeaderboard(leaderboard)
+      
+      console.log('✅ Set initial portfolios and leaderboard with', leaderboard.length, 'entries')
+    } else {
+      console.log('📦 Portfolios already initialized, skipping initialization')
     }
 
-    // Set initial portfolios
-    setPortfolios(demoPortfolios)
-
-    // Immediately refresh leaderboard with initial data (before fetching prices)
-    refreshLeaderboard()
-
-    // Fetch all unique stock symbols
-    const allSymbols = Object.values(demoPortfolios)
-      .flatMap(portfolio => portfolio.positions.map(pos => pos.symbol))
-
-    // Fetch stock prices and then refresh leaderboard again with updated prices
-    fetchStockPrices(allSymbols).then(() => {
-      refreshLeaderboard()
-    }).catch((error) => {
-      console.error('Failed to fetch stock prices:', error)
-      // Even if stock prices fail, we should still have basic leaderboard data
-    })
-
-  }, [setPortfolios, fetchStockPrices, refreshLeaderboard])
+  }, [setPortfolios, setLeaderboard, portfolios])
 }
 
 /**
@@ -182,12 +94,41 @@ export function useLeaderboardData(): {
     leaderboardLoading,
     leaderboardError,
     portfoliosLoading,
-    stocksLoading
+    stocksLoading,
+    leaderboard: rawLeaderboard,
+    portfolios
   } = usePortfolioStore()
 
   const leaderboard = useMemo(() => {
-    return getSortedLeaderboard()
-  }, [getSortedLeaderboard])
+    const sorted = getSortedLeaderboard()
+    console.log('🔍 useLeaderboardData - Raw leaderboard length:', rawLeaderboard.length)
+    console.log('🔍 useLeaderboardData - Sorted leaderboard length:', sorted.length)
+    console.log('🔍 useLeaderboardData - Portfolios count:', Object.keys(portfolios).length)
+    
+    // If leaderboard is empty but we have portfolios, generate leaderboard from portfolios
+    if (sorted.length === 0 && Object.keys(portfolios).length > 0) {
+      console.log('⚠️ Empty leaderboard but portfolios exist, generating from portfolios')
+      const generated = Object.values(portfolios)
+        .map((portfolio, index) => ({
+          rank: index + 1,
+          username: portfolio.username,
+          return: portfolio.totalReturnPercent,
+          tier: portfolio.tier,
+          sector: portfolio.sector,
+          primaryStock: portfolio.primaryStock,
+          portfolio: portfolio.positions.map(p => p.symbol),
+          totalValue: portfolio.totalValue,
+          dayChange: portfolio.dayChange,
+          positions: portfolio.positions
+        }))
+        .sort((a, b) => b.return - a.return)
+        .map((entry, index) => ({ ...entry, rank: index + 1 }))
+      
+      return generated
+    }
+    
+    return sorted
+  }, [getSortedLeaderboard, rawLeaderboard.length, portfolios])
 
   const loading = leaderboardLoading || portfoliosLoading || stocksLoading
   const error = leaderboardError

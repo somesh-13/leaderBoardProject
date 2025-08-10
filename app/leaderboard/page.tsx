@@ -23,6 +23,10 @@ export default function Leaderboard() {
   const { filters, sortField, sortDirection, setFilters, setSorting } = usePortfolioFilters()
   const store = usePortfolioStore()
   
+  // Debug logging
+  console.log('🔍 Leaderboard component - leaderboard length:', leaderboard.length)
+  console.log('🔍 Leaderboard component - isLoadingReturns:', isLoadingReturns)
+  
   // Local UI state
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
   
@@ -283,11 +287,28 @@ export default function Leaderboard() {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-              {sortedAndFilteredData.map((entry) => (
-                <tr 
-                  key={entry.rank} 
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                >
+              {sortedAndFilteredData.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                    {isLoadingReturns ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                        <span>Loading leaderboard data...</span>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-lg font-medium">No traders found</p>
+                        <p className="text-sm mt-1">Adjust your filters or check back later.</p>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ) : (
+                sortedAndFilteredData.map((entry) => (
+                  <tr 
+                    key={entry.rank} 
+                    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                  >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <span className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -337,15 +358,15 @@ export default function Leaderboard() {
                     {entry.primaryStock}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
-                      {entry.portfolio.slice(0, 3).map((stock, index) => (
+                    <div className="flex flex-wrap gap-1 max-w-xs">
+                      {entry.portfolio.slice(0, 6).map((stock, index) => (
                         <span key={index} className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
                           {stock}
                         </span>
                       ))}
-                      {entry.portfolio.length > 3 && (
+                      {entry.portfolio.length > 6 && (
                         <span className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
-                          +{entry.portfolio.length - 3}
+                          +{entry.portfolio.length - 6}
                         </span>
                       )}
                     </div>
@@ -354,7 +375,8 @@ export default function Leaderboard() {
                     {entry.sector}
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>

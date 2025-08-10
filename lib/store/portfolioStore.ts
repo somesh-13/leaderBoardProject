@@ -31,11 +31,13 @@ interface PortfolioStore {
   portfolios: Record<string, Portfolio>
   portfoliosLoading: boolean
   portfoliosError: string | null
+  portfolioCache: Record<string, { data: Portfolio; timestamp: number }>
 
   // Leaderboard State
   leaderboard: LeaderboardEntry[]
   leaderboardLoading: boolean
   leaderboardError: string | null
+  leaderboardCache: { data: LeaderboardEntry[]; timestamp: number } | null
 
   // UI State
   filters: FilterState
@@ -99,10 +101,12 @@ export const usePortfolioStore = create<PortfolioStore>()(
         portfolios: {},
         portfoliosLoading: false,
         portfoliosError: null,
+        portfolioCache: {},
 
         leaderboard: [],
         leaderboardLoading: false,
         leaderboardError: null,
+        leaderboardCache: null,
 
         filters: defaultFilters,
         sortField: 'rank',
@@ -370,9 +374,19 @@ export const usePortfolioStore = create<PortfolioStore>()(
         },
 
         refreshLeaderboard: async () => {
+          const { leaderboardCache } = get()
+          const now = Date.now()
+          const CACHE_DURATION = 2 * 60 * 1000 // 2 minutes
+
+          // Use cached data if still valid
+          if (leaderboardCache && (now - leaderboardCache.timestamp) < CACHE_DURATION) {
+            console.log('📦 Using cached leaderboard data')
+            set({ leaderboard: leaderboardCache.data })
+            return
+          }
+
           set({ leaderboardLoading: true })
           try {
-            // This would recalculate leaderboard from portfolios
             const { portfolios } = get()
             console.log('🔄 Refreshing leaderboard, portfolios count:', Object.keys(portfolios).length)
             
@@ -397,7 +411,8 @@ export const usePortfolioStore = create<PortfolioStore>()(
             set({ 
               leaderboard,
               leaderboardLoading: false,
-              leaderboardError: null
+              leaderboardError: null,
+              leaderboardCache: { data: leaderboard, timestamp: now }
             })
           } catch (error) {
             set({
@@ -441,8 +456,11 @@ export const usePortfolioStore = create<PortfolioStore>()(
         },
 
         getSortedLeaderboard: () => {
-          const { sortField, sortDirection } = get()
+          const { sortField, sortDirection, leaderboard } = get()
+          console.log('🔍 getSortedLeaderboard - Raw leaderboard length:', leaderboard.length)
+          
           const filtered = get().getFilteredLeaderboard()
+          console.log('🔍 getSortedLeaderboard - Filtered leaderboard length:', filtered.length)
           
           return [...filtered].sort((a, b) => {
             let aVal = a[sortField]
@@ -468,12 +486,35 @@ export const usePortfolioStore = create<PortfolioStore>()(
           filters: state.filters,
           sortField: state.sortField,
           sortDirection: state.sortDirection,
-          performanceSinceDate: state.performanceSinceDate
-        })
+          performanceSinceDate: state.performanceSinceDate,
+          portfolioCache: state.portfolioCache,
+          leaderboardCache: state.leaderboardCache
+        }),
+        onRehydrateStorage: () => (state) => {
+          // If we have persisted data but no portfolios, clear the cache and reinitialize
+          if (state && Object.keys(state.portfolios || {}).length === 0) {
+            console.log('⚠️ No portfolios found after hydration, will need initialization')
+          }
+        }
       }
     )
   )
 )
+
+/**
+ * Simulate realistic stock prices for demo
+ */
+function getSimulatedPrice(symbol: string): number {
+  const basePrices: Record<string, number> = {
+    'RKLB': 18.50, 'ASTS': 15.20, 'AMZN': 178.00, 'SOFI': 10.45, 'BRK.B': 455.00,
+    'PLTR': 65.00, 'HOOD': 32.00, 'TSLA': 248.00, 'AMD': 142.00,
+    'META': 582.00, 'MSTR': 425.00, 'MSFT': 435.00, 'HIMS': 13.20,
+    'NVDA': 145.00, 'NU': 12.80, 'NOW': 1025.00, 'MELI': 2150.00,
+    'UNH': 618.00, 'GOOGL': 186.00, 'MRVL': 102.00, 'AXON': 720.00
+  }
+  
+  return basePrices[symbol] || 100
+}
 
 // Selectors for optimized re-renders
 export const useStocks = () => usePortfolioStore(state => state.stocks)
