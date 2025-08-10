@@ -1,0 +1,3 @@
+[submodule "youtube-digest-backend"]
+	path = youtube-digest-backend
+	url = git@github.com:adityasugandhi/youtube-digest.git
