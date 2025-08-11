@@ -41,8 +41,16 @@ jobs:
           echo "  }," >> next.config.js
           echo "  basePath: '/leaderBoardProject'," >> next.config.js
           echo "  assetPrefix: '/leaderBoardProject/'," >> next.config.js
+          echo "  experimental: {" >> next.config.js
+          echo "    appDir: true" >> next.config.js
+          echo "  }," >> next.config.js
+          echo "  generateStaticParams: async () => []," >> next.config.js
           echo "}" >> next.config.js
           echo "module.exports = nextConfig" >> next.config.js
+
+      - name: Remove API routes for static export
+        run: |
+          rm -rf app/api
 
       - name: Build Next.js app
         run: npm run build
