@@ -22,7 +22,8 @@
       "mcp__filesystem__read_text_file",
       "mcp__filesystem__write_file",
       "mcp__filesystem__edit_file",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "mcp__filesystem__directory_tree"
     ],
     "deny": []
   }

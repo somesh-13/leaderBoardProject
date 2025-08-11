@@ -1,16 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import TierBadge from '@/components/TierBadge'
 import { BackgroundLines } from '@/components/ui/background-lines'
 import { useState, useEffect } from 'react'
 import { getCurrentPrice } from '@/lib/polygon'
 
 export default function Home() {
-  const mockStats = {
-    topUser: { username: 'Matt', tier: 'S' as const, return: 45.2 }
-  }
-
   const [marketAssets, setMarketAssets] = useState([
     { name: 'S&P 500', symbol: 'SPY', value: 4783.45, change: 1.2, type: 'Index' },
     { name: 'NASDAQ', symbol: 'QQQ', value: 15234.78, change: -0.8, type: 'Index' },
@@ -19,9 +14,11 @@ export default function Home() {
     { name: 'Microsoft', symbol: 'MSFT', value: 325.12, change: -1.2, type: 'Stock' },
     { name: 'Meta', symbol: 'META', value: 298.45, change: 0.3, type: 'Stock' }
   ])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const fetchMarketData = async () => {
+      setIsLoading(true)
       const assetTemplates = [
         { name: 'S&P 500', symbol: 'SPY', type: 'Index' },
         { name: 'NASDAQ', symbol: 'QQQ', type: 'Index' },
@@ -42,6 +39,7 @@ export default function Home() {
         })
       )
       setMarketAssets(updatedAssets)
+      setIsLoading(false)
     }
 
     fetchMarketData()
@@ -82,71 +80,59 @@ export default function Home() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
 
       {/* Market Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
-        {/* Top S-Tier User */}
-        <div className="card text-center">
-          <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">
-            Top S-Tier Trader
-          </h3>
-          <div className="mb-2">
-            <TierBadge tier={mockStats.topUser.tier} className="mb-2" />
-          </div>
-          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-1">
-            {mockStats.topUser.username}
-          </p>
-          <p className="text-3xl font-bold text-gain">
-            +{mockStats.topUser.return}%
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Annual Return
-          </p>
-        </div>
-
+      <div className="mb-16">
         {/* Market Assets Table */}
-        <div className="lg:col-span-2 card">
+        <div className="card">
           <h3 className="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-300">
             Market Overview
           </h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Asset</th>
-                  <th className="text-right py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Price</th>
-                  <th className="text-right py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Change</th>
-                  <th className="text-right py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Type</th>
-                </tr>
-              </thead>
-              <tbody>
-                {marketAssets.map((asset, index) => (
-                  <tr key={index} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    <td className="py-3">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{asset.name}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{asset.symbol}</p>
-                      </div>
-                    </td>
-                    <td className="py-3 text-right font-medium text-gray-900 dark:text-white">
-                      {asset.value.toLocaleString()}
-                    </td>
-                    <td className={`py-3 text-right font-semibold ${
-                      asset.change >= 0 ? 'text-gain' : 'text-loss'
-                    }`}>
-                      {asset.change >= 0 ? '+' : ''}{asset.change}%
-                    </td>
-                    <td className="py-3 text-right">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        asset.type === 'Index' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' :
-                        asset.type === 'Crypto' ? 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200' :
-                        'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-                      }`}>
-                        {asset.type}
-                      </span>
-                    </td>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-3 text-gray-600 dark:text-gray-400">Loading market data...</span>
+              </div>
+            ) : (
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Asset</th>
+                    <th className="text-right py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Price</th>
+                    <th className="text-right py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Change</th>
+                    <th className="text-right py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Type</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {marketAssets.map((asset, index) => (
+                    <tr key={index} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                      <td className="py-3">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">{asset.name}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{asset.symbol}</p>
+                        </div>
+                      </td>
+                      <td className="py-3 text-right font-medium text-gray-900 dark:text-white">
+                        {asset.value.toLocaleString()}
+                      </td>
+                      <td className={`py-3 text-right font-semibold ${
+                        asset.change >= 0 ? 'text-gain' : 'text-loss'
+                      }`}>
+                        {asset.change >= 0 ? '+' : ''}{asset.change.toFixed(2)}%
+                      </td>
+                      <td className="py-3 text-right">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          asset.type === 'Index' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' :
+                          asset.type === 'Crypto' ? 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200' :
+                          'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                        }`}>
+                          {asset.type}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>

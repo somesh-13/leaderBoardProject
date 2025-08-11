@@ -239,7 +239,7 @@ async function computeLeaderboardEntry(username: string, period: Period): Promis
     };
 
     // Calculate advanced metrics based on period
-    const metrics = await calculateMetrics(positions, totalValue, invested, totalReturnPct, dayChangePct, period);
+    const metrics = await calculateMetrics(positions, totalValue, invested, totalReturnPct, dayChangePct);
 
     const entry: LeaderboardEntry = {
       rank: 0, // Will be set during sorting
@@ -267,8 +267,7 @@ async function calculateMetrics(
   totalValue: number,
   invested: number,
   totalReturnPct: number,
-  dayChangePct: number,
-  period: Period
+  dayChangePct: number
 ): Promise<LeaderboardMetrics> {
   
   // Basic metrics

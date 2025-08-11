@@ -73,7 +73,7 @@ export async function GET(
         const returnPct = investedValue > 0 ? (returnValue / investedValue) * 100 : 0;
 
         // Calculate day change for this position
-        const dayChange = await priceService.calculateDayChange(pos.symbol, pos.shares);
+        // const dayChange = await priceService.calculateDayChange(pos.symbol, pos.shares);
 
         return {
           symbol: pos.symbol,

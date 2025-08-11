@@ -10,19 +10,19 @@ export const INITIAL_PORTFOLIOS: Record<string, Portfolio> = {
     userId: 'matt',
     username: 'Matt',
     positions: [
-      { symbol: 'RKLB', shares: 100, avgPrice: 26.55, sector: 'Aerospace' },
-      { symbol: 'AMZN', shares: 5, avgPrice: 216.10, sector: 'Technology' },
-      { symbol: 'SOFI', shares: 200, avgPrice: 14.90, sector: 'Financial' },
-      { symbol: 'ASTS', shares: 150, avgPrice: 41.91, sector: 'Aerospace' },
-      { symbol: 'BRK.B', shares: 10, avgPrice: 490.23, sector: 'Financial' },
-      { symbol: 'CELH', shares: 25, avgPrice: 43.49, sector: 'Consumer' },
-      { symbol: 'OSCR', shares: 80, avgPrice: 14.95, sector: 'Healthcare' },
-      { symbol: 'EOG', shares: 30, avgPrice: 123.18, sector: 'Energy' },
-      { symbol: 'BROS', shares: 45, avgPrice: 70.81, sector: 'Consumer' },
-      { symbol: 'ABCL', shares: 120, avgPrice: 3.16, sector: 'Healthcare' }
+      { symbol: 'RKLB', shares: Math.floor(1000 / 26.55), avgPrice: 26.55, sector: 'Aerospace' }, // 37 shares
+      { symbol: 'AMZN', shares: Math.floor(1000 / 216.10), avgPrice: 216.10, sector: 'Technology' }, // 4 shares
+      { symbol: 'SOFI', shares: Math.floor(1000 / 14.90), avgPrice: 14.90, sector: 'Financial' }, // 67 shares
+      { symbol: 'ASTS', shares: Math.floor(1000 / 41.91), avgPrice: 41.91, sector: 'Aerospace' }, // 23 shares
+      { symbol: 'BRK.B', shares: Math.floor(1000 / 490.23), avgPrice: 490.23, sector: 'Financial' }, // 2 shares
+      { symbol: 'CELH', shares: Math.floor(1000 / 43.49), avgPrice: 43.49, sector: 'Consumer' }, // 22 shares
+      { symbol: 'OSCR', shares: Math.floor(1000 / 14.95), avgPrice: 14.95, sector: 'Healthcare' }, // 66 shares
+      { symbol: 'EOG', shares: Math.floor(1000 / 123.18), avgPrice: 123.18, sector: 'Energy' }, // 8 shares
+      { symbol: 'BROS', shares: Math.floor(1000 / 70.81), avgPrice: 70.81, sector: 'Consumer' }, // 14 shares
+      { symbol: 'ABCL', shares: Math.floor(1000 / 3.16), avgPrice: 3.16, sector: 'Healthcare' } // 316 shares
     ],
     totalValue: 22750.00,
-    totalInvested: 10000.00,
+    totalInvested: 10000.00, // 10 positions × $1000 each
     totalReturn: 12750.00,
     totalReturnPercent: 127.5,
     dayChange: 345.60,
@@ -36,19 +36,19 @@ export const INITIAL_PORTFOLIOS: Record<string, Portfolio> = {
     userId: 'amit',
     username: 'Amit',
     positions: [
-      { symbol: 'PLTR', shares: 50, avgPrice: 141.41, sector: 'Technology' },
-      { symbol: 'HOOD', shares: 75, avgPrice: 76.75, sector: 'Financial' },
-      { symbol: 'TSLA', shares: 8, avgPrice: 329.13, sector: 'Automotive' },
-      { symbol: 'AMD', shares: 25, avgPrice: 126.39, sector: 'Technology' },
-      { symbol: 'JPM', shares: 15, avgPrice: 270.36, sector: 'Financial' },
-      { symbol: 'NBIS', shares: 200, avgPrice: 50.46, sector: 'Technology' },
-      { symbol: 'GRAB', shares: 180, avgPrice: 4.71, sector: 'Technology' },
-      { symbol: 'AAPL', shares: 12, avgPrice: 198.42, sector: 'Technology' },
-      { symbol: 'V', shares: 8, avgPrice: 355.48, sector: 'Financial' },
-      { symbol: 'DUOL', shares: 35, avgPrice: 474.90, sector: 'Technology' }
+      { symbol: 'PLTR', shares: Math.floor(1000 / 141.41), avgPrice: 141.41, sector: 'Technology' }, // 7 shares
+      { symbol: 'HOOD', shares: Math.floor(1000 / 76.75), avgPrice: 76.75, sector: 'Financial' }, // 13 shares
+      { symbol: 'TSLA', shares: Math.floor(1000 / 329.13), avgPrice: 329.13, sector: 'Automotive' }, // 3 shares
+      { symbol: 'AMD', shares: Math.floor(1000 / 126.39), avgPrice: 126.39, sector: 'Technology' }, // 7 shares
+      { symbol: 'JPM', shares: Math.floor(1000 / 270.36), avgPrice: 270.36, sector: 'Financial' }, // 3 shares
+      { symbol: 'NBIS', shares: Math.floor(1000 / 50.46), avgPrice: 50.46, sector: 'Technology' }, // 19 shares
+      { symbol: 'GRAB', shares: Math.floor(1000 / 4.71), avgPrice: 4.71, sector: 'Technology' }, // 212 shares
+      { symbol: 'AAPL', shares: Math.floor(1000 / 198.42), avgPrice: 198.42, sector: 'Technology' }, // 5 shares
+      { symbol: 'V', shares: Math.floor(1000 / 355.48), avgPrice: 355.48, sector: 'Financial' }, // 2 shares
+      { symbol: 'DUOL', shares: Math.floor(1000 / 474.90), avgPrice: 474.90, sector: 'Technology' } // 2 shares
     ],
     totalValue: 28950.00,
-    totalInvested: 10000.00,
+    totalInvested: 10000.00, // 10 positions × $1000 each
     totalReturn: 18950.00,
     totalReturnPercent: 189.5,
     dayChange: -234.50,
@@ -62,19 +62,19 @@ export const INITIAL_PORTFOLIOS: Record<string, Portfolio> = {
     userId: 'steve',
     username: 'Steve',
     positions: [
-      { symbol: 'META', shares: 15, avgPrice: 702.12, sector: 'Technology' },
-      { symbol: 'MSTR', shares: 12, avgPrice: 382.25, sector: 'Technology' },
-      { symbol: 'MSFT', shares: 20, avgPrice: 479.14, sector: 'Technology' },
-      { symbol: 'HIMS', shares: 400, avgPrice: 59.78, sector: 'Healthcare' },
-      { symbol: 'AVGO', shares: 6, avgPrice: 252.10, sector: 'Technology' },
-      { symbol: 'CRWD', shares: 18, avgPrice: 479.39, sector: 'Technology' },
-      { symbol: 'NFLX', shares: 9, avgPrice: 1225.35, sector: 'Technology' },
-      { symbol: 'CRM', shares: 22, avgPrice: 263.88, sector: 'Technology' },
-      { symbol: 'PYPL', shares: 35, avgPrice: 72.26, sector: 'Financial' },
-      { symbol: 'MU', shares: 45, avgPrice: 119.84, sector: 'Technology' }
+      { symbol: 'META', shares: Math.floor(1000 / 702.12), avgPrice: 702.12, sector: 'Technology' }, // 1 share
+      { symbol: 'MSTR', shares: Math.floor(1000 / 382.25), avgPrice: 382.25, sector: 'Technology' }, // 2 shares
+      { symbol: 'MSFT', shares: Math.floor(1000 / 479.14), avgPrice: 479.14, sector: 'Technology' }, // 2 shares
+      { symbol: 'HIMS', shares: Math.floor(1000 / 59.78), avgPrice: 59.78, sector: 'Healthcare' }, // 16 shares
+      { symbol: 'AVGO', shares: Math.floor(1000 / 252.10), avgPrice: 252.10, sector: 'Technology' }, // 3 shares
+      { symbol: 'CRWD', shares: Math.floor(1000 / 479.39), avgPrice: 479.39, sector: 'Technology' }, // 2 shares
+      { symbol: 'NFLX', shares: Math.floor(1000 / 1225.35), avgPrice: 1225.35, sector: 'Technology' }, // 0 shares
+      { symbol: 'CRM', shares: Math.floor(1000 / 263.88), avgPrice: 263.88, sector: 'Technology' }, // 3 shares
+      { symbol: 'PYPL', shares: Math.floor(1000 / 72.26), avgPrice: 72.26, sector: 'Financial' }, // 13 shares
+      { symbol: 'MU', shares: Math.floor(1000 / 119.84), avgPrice: 119.84, sector: 'Technology' } // 8 shares
     ],
     totalValue: 31200.00,
-    totalInvested: 10000.00,
+    totalInvested: 10000.00, // 10 positions × $1000 each
     totalReturn: 21200.00,
     totalReturnPercent: 212.0,
     dayChange: 156.75,
@@ -88,19 +88,19 @@ export const INITIAL_PORTFOLIOS: Record<string, Portfolio> = {
     userId: 'tannor',
     username: 'Tannor',
     positions: [
-      { symbol: 'NVDA', shares: 6, avgPrice: 144.69, sector: 'Technology' },
-      { symbol: 'NU', shares: 300, avgPrice: 12.39, sector: 'Financial' },
-      { symbol: 'NOW', shares: 4, avgPrice: 1005.13, sector: 'Technology' },
-      { symbol: 'MELI', shares: 2, avgPrice: 2454.76, sector: 'Technology' },
-      { symbol: 'SHOP', shares: 12, avgPrice: 108.37, sector: 'Technology' },
-      { symbol: 'TTD', shares: 28, avgPrice: 70.25, sector: 'Technology' },
-      { symbol: 'ASML', shares: 3, avgPrice: 775.23, sector: 'Technology' },
-      { symbol: 'APP', shares: 60, avgPrice: 370.68, sector: 'Technology' },
-      { symbol: 'COIN', shares: 25, avgPrice: 261.57, sector: 'Financial' },
-      { symbol: 'TSM', shares: 40, avgPrice: 215.68, sector: 'Technology' }
+      { symbol: 'NVDA', shares: Math.floor(1000 / 144.69), avgPrice: 144.69, sector: 'Technology' }, // 6 shares
+      { symbol: 'NU', shares: Math.floor(1000 / 12.39), avgPrice: 12.39, sector: 'Financial' }, // 80 shares
+      { symbol: 'NOW', shares: Math.floor(1000 / 1005.13), avgPrice: 1005.13, sector: 'Technology' }, // 0 shares
+      { symbol: 'MELI', shares: Math.floor(1000 / 2454.76), avgPrice: 2454.76, sector: 'Technology' }, // 0 shares
+      { symbol: 'SHOP', shares: Math.floor(1000 / 108.37), avgPrice: 108.37, sector: 'Technology' }, // 9 shares
+      { symbol: 'TTD', shares: Math.floor(1000 / 70.25), avgPrice: 70.25, sector: 'Technology' }, // 14 shares
+      { symbol: 'ASML', shares: Math.floor(1000 / 775.23), avgPrice: 775.23, sector: 'Technology' }, // 1 share
+      { symbol: 'APP', shares: Math.floor(1000 / 370.68), avgPrice: 370.68, sector: 'Technology' }, // 2 shares
+      { symbol: 'COIN', shares: Math.floor(1000 / 261.57), avgPrice: 261.57, sector: 'Financial' }, // 3 shares
+      { symbol: 'TSM', shares: Math.floor(1000 / 215.68), avgPrice: 215.68, sector: 'Technology' } // 4 shares
     ],
     totalValue: 26480.00,
-    totalInvested: 10000.00,
+    totalInvested: 10000.00, // 10 positions × $1000 each
     totalReturn: 16480.00,
     totalReturnPercent: 164.8,
     dayChange: 387.20,
@@ -114,19 +114,19 @@ export const INITIAL_PORTFOLIOS: Record<string, Portfolio> = {
     userId: 'kris',
     username: 'Kris',
     positions: [
-      { symbol: 'UNH', shares: 8, avgPrice: 307.66, sector: 'Healthcare' },
-      { symbol: 'GOOGL', shares: 10, avgPrice: 176.77, sector: 'Technology' },
-      { symbol: 'MRVL', shares: 50, avgPrice: 70.42, sector: 'Technology' },
-      { symbol: 'AXON', shares: 25, avgPrice: 780.61, sector: 'Technology' },
-      { symbol: 'ELF', shares: 85, avgPrice: 126.21, sector: 'Consumer' },
-      { symbol: 'ORCL', shares: 35, avgPrice: 211.10, sector: 'Technology' },
-      { symbol: 'CSCO', shares: 60, avgPrice: 65.51, sector: 'Technology' },
-      { symbol: 'LLY', shares: 4, avgPrice: 807.58, sector: 'Healthcare' },
-      { symbol: 'NVO', shares: 20, avgPrice: 77.02, sector: 'Healthcare' },
-      { symbol: 'TTWO', shares: 40, avgPrice: 238.60, sector: 'Technology' }
+      { symbol: 'UNH', shares: Math.floor(1000 / 307.66), avgPrice: 307.66, sector: 'Healthcare' }, // 3 shares
+      { symbol: 'GOOGL', shares: Math.floor(1000 / 176.77), avgPrice: 176.77, sector: 'Technology' }, // 5 shares
+      { symbol: 'MRVL', shares: Math.floor(1000 / 70.42), avgPrice: 70.42, sector: 'Technology' }, // 14 shares
+      { symbol: 'AXON', shares: Math.floor(1000 / 780.61), avgPrice: 780.61, sector: 'Technology' }, // 1 share
+      { symbol: 'ELF', shares: Math.floor(1000 / 126.21), avgPrice: 126.21, sector: 'Consumer' }, // 7 shares
+      { symbol: 'ORCL', shares: Math.floor(1000 / 211.10), avgPrice: 211.10, sector: 'Technology' }, // 4 shares
+      { symbol: 'CSCO', shares: Math.floor(1000 / 65.51), avgPrice: 65.51, sector: 'Technology' }, // 15 shares
+      { symbol: 'LLY', shares: Math.floor(1000 / 807.58), avgPrice: 807.58, sector: 'Healthcare' }, // 1 share
+      { symbol: 'NVO', shares: Math.floor(1000 / 77.02), avgPrice: 77.02, sector: 'Healthcare' }, // 12 shares
+      { symbol: 'TTWO', shares: Math.floor(1000 / 238.60), avgPrice: 238.60, sector: 'Technology' } // 4 shares
     ],
     totalValue: 25350.00,
-    totalInvested: 10000.00,
+    totalInvested: 10000.00, // 10 positions × $1000 each
     totalReturn: 15350.00,
     totalReturnPercent: 153.5,
     dayChange: 289.45,

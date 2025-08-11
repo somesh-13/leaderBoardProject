@@ -19,6 +19,9 @@ import {
   SortField,
   SortDirection 
 } from '@/lib/types/portfolio'
+import { fetchPolygonSnapshots } from '@/lib/polygon'
+import { snapshotsToStockMap, mergeStockData } from '@/lib/stockMapping'
+import { selectAllPortfolioSymbols } from '@/lib/symbols'
 
 interface PortfolioStore {
   // Stock Data State
@@ -69,10 +72,16 @@ interface PortfolioStore {
   setSorting: (field: SortField, direction: SortDirection) => void
   setPerformanceSinceDate: (date: string) => void
 
-  // Actions - Data Fetching
+  // Actions - Data Fetching (Legacy)
   fetchStockPrices: (symbols: string[]) => Promise<void>
   refreshPortfolios: () => Promise<void>
   refreshLeaderboard: () => Promise<void>
+
+  // Actions - Polygon Integration
+  fetchPolygonPrices: (symbols?: string[]) => Promise<void>
+  mergeStocks: (stocks: Record<string, StockData>) => void
+  lastPolygonFetchAt: number
+  polygonFetchError: string | null
 
   // Computed Properties
   getUniqueSymbols: () => string[]
@@ -112,6 +121,8 @@ export const usePortfolioStore = create<PortfolioStore>()(
         sortField: 'rank',
         sortDirection: 'asc',
         performanceSinceDate: '2025-06-16',
+        lastPolygonFetchAt: 0,
+        polygonFetchError: null,
 
         // Stock Actions
         setStocks: (stocks) => set({ 
@@ -475,6 +486,66 @@ export const usePortfolioStore = create<PortfolioStore>()(
             const comparison = (aVal ?? 0) < (bVal ?? 0) ? -1 : (aVal ?? 0) > (bVal ?? 0) ? 1 : 0
             return sortDirection === 'desc' ? -comparison : comparison
           })
+        },
+
+        // Polygon Integration Actions
+        mergeStocks: (incoming) => {
+          const current = get().stocks
+          const merged = mergeStockData(current, incoming)
+          set({ 
+            stocks: merged,
+            lastStockUpdate: Date.now(),
+            stocksError: null 
+          })
+        },
+
+        fetchPolygonPrices: async (symbols) => {
+          try {
+            const apiKey = process.env.NEXT_PUBLIC_POLYGON_API_KEY
+            if (!apiKey) {
+              throw new Error('Polygon API key not found. Set NEXT_PUBLIC_POLYGON_API_KEY in your environment.')
+            }
+
+            // Use provided symbols or get all portfolio symbols
+            const targetSymbols = symbols && symbols.length > 0 
+              ? symbols 
+              : selectAllPortfolioSymbols()
+
+            if (targetSymbols.length === 0) {
+              console.warn('⚠️ No symbols to fetch from Polygon API')
+              return
+            }
+
+            // Ensure uppercase symbols for Polygon stocks API
+            const uniqueSymbols = Array.from(new Set(targetSymbols.map(s => s.toUpperCase())))
+            
+            console.log(`🔄 Fetching Polygon prices for ${uniqueSymbols.length} symbols`)
+            set({ stocksLoading: true, polygonFetchError: null })
+
+            const snapshots = await fetchPolygonSnapshots(uniqueSymbols, apiKey)
+            const stockMap = snapshotsToStockMap(snapshots)
+
+            // Merge with existing data (preserves demo data for missing symbols)
+            get().mergeStocks(stockMap)
+            
+            set({ 
+              lastPolygonFetchAt: Date.now(),
+              stocksLoading: false,
+              polygonFetchError: null
+            })
+
+            console.log(`✅ Polygon fetch completed: ${Object.keys(stockMap).length} prices updated`)
+            
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error fetching Polygon data'
+            console.error('❌ Polygon fetch failed:', error)
+            
+            set({ 
+              stocksLoading: false,
+              polygonFetchError: errorMessage,
+              lastPolygonFetchAt: Date.now()
+            })
+          }
         }
       }),
       {
@@ -483,6 +554,7 @@ export const usePortfolioStore = create<PortfolioStore>()(
           // Only persist certain parts of the state
           stocks: state.stocks,
           lastStockUpdate: state.lastStockUpdate,
+          lastPolygonFetchAt: state.lastPolygonFetchAt,
           filters: state.filters,
           sortField: state.sortField,
           sortDirection: state.sortDirection,
@@ -504,17 +576,17 @@ export const usePortfolioStore = create<PortfolioStore>()(
 /**
  * Simulate realistic stock prices for demo
  */
-function getSimulatedPrice(symbol: string): number {
-  const basePrices: Record<string, number> = {
-    'RKLB': 18.50, 'ASTS': 15.20, 'AMZN': 178.00, 'SOFI': 10.45, 'BRK.B': 455.00,
-    'PLTR': 65.00, 'HOOD': 32.00, 'TSLA': 248.00, 'AMD': 142.00,
-    'META': 582.00, 'MSTR': 425.00, 'MSFT': 435.00, 'HIMS': 13.20,
-    'NVDA': 145.00, 'NU': 12.80, 'NOW': 1025.00, 'MELI': 2150.00,
-    'UNH': 618.00, 'GOOGL': 186.00, 'MRVL': 102.00, 'AXON': 720.00
-  }
-  
-  return basePrices[symbol] || 100
-}
+// function getSimulatedPrice(symbol: string): number {
+//   const basePrices: Record<string, number> = {
+//     'RKLB': 18.50, 'ASTS': 15.20, 'AMZN': 178.00, 'SOFI': 10.45, 'BRK.B': 455.00,
+//     'PLTR': 65.00, 'HOOD': 32.00, 'TSLA': 248.00, 'AMD': 142.00,
+//     'META': 582.00, 'MSTR': 425.00, 'MSFT': 435.00, 'HIMS': 13.20,
+//     'NVDA': 145.00, 'NU': 12.80, 'NOW': 1025.00, 'MELI': 2150.00,
+//     'UNH': 618.00, 'GOOGL': 186.00, 'MRVL': 102.00, 'AXON': 720.00
+//   }
+//   
+//   return basePrices[symbol] || 100
+// }
 
 // Selectors for optimized re-renders
 export const useStocks = () => usePortfolioStore(state => state.stocks)

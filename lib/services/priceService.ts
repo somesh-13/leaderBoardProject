@@ -139,7 +139,7 @@ class PriceService {
    */
   async getPriceRange(symbol: string, fromDate: string, toDate?: string): Promise<PriceBar[]> {
     const to = toDate || fromDate;
-    const cacheKey = `range:${symbol.toUpperCase()}:${fromDate}:${to}`;
+    // const cacheKey = `range:${symbol.toUpperCase()}:${fromDate}:${to}`;
     
     try {
       return await this.fetchPriceRange(symbol, fromDate, to);
@@ -159,7 +159,7 @@ class PriceService {
     priorClosePrice: number;
   }> {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      // const today = new Date().toISOString().split('T')[0];
       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       
       const [currentPrice, priorClosePrice] = await Promise.all([

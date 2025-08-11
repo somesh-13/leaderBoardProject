@@ -3,7 +3,7 @@
  * Simulates historical performance data for portfolio tracking
  */
 
-import { Portfolio, StockData } from '@/lib/types/portfolio'
+import { Portfolio } from '@/lib/types/portfolio'
 
 interface HistoricalDataPoint {
   date: string
@@ -11,11 +11,11 @@ interface HistoricalDataPoint {
   volume: number
 }
 
-interface PortfolioHistoricalData {
-  userId: string
-  symbol: string
-  data: HistoricalDataPoint[]
-}
+// interface PortfolioHistoricalData {
+//   userId: string
+//   symbol: string
+//   data: HistoricalDataPoint[]
+// }
 
 /**
  * Generate realistic historical data for a stock symbol
@@ -132,10 +132,10 @@ function getTrendFactor(symbol: string, timeProgress: number): number {
     'AMZN': (t) => 0.08 + Math.sin(t * Math.PI) * 0.02,
     'GOOGL': (t) => 0.09 + Math.cos(t * Math.PI) * 0.02,
     'UNH': (t) => 0.07 + Math.sin(t * Math.PI * 0.3) * 0.01,
-    'BRK.B': (t) => 0.06 + Math.sin(t * Math.PI * 0.2) * 0.005
+    'BRK.B': () => 0.06 + Math.sin(timeProgress * Math.PI * 0.2) * 0.005
   }
   
-  const trendFunction = trendMap[symbol] || ((t) => 0.05) // Default 5% annual growth
+  const trendFunction = trendMap[symbol] || (() => 0.05) // Default 5% annual growth
   return trendFunction(timeProgress)
 }
 

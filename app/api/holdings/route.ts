@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentPrice } from '@/lib/polygon'
 import { INITIAL_PORTFOLIOS } from '@/lib/data/initialPortfolios'
-import { StockData, Portfolio, Position } from '@/lib/types/portfolio'
+import { Portfolio, Position } from '@/lib/types/portfolio'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
