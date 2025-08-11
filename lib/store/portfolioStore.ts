@@ -262,7 +262,7 @@ export const usePortfolioStore = create<PortfolioStore>()(
               throw new Error('Polygon API key not found in environment variables')
             }
 
-            const stockData: Record<string, any> = {}
+            const stockData: Record<string, { symbol: string; price: number; change: number; changePercent: number; lastUpdated: number; volume: number; previousClose: number }> = {}
 
             // Fetch each stock price directly from Polygon API
             for (const symbol of uniqueSymbols) {

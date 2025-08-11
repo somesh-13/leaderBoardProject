@@ -127,15 +127,19 @@ export function createFallbackStockData(
 /**
  * Validate StockData object has required fields
  */
-export function isValidStockData(data: any): data is StockData {
+export function isValidStockData(data: unknown): data is StockData {
+  if (typeof data !== 'object' || data === null) {
+    return false;
+  }
+  
+  const obj = data as Record<string, unknown>;
   return (
-    typeof data === 'object' &&
-    typeof data.symbol === 'string' &&
-    typeof data.price === 'number' &&
-    typeof data.change === 'number' &&
-    typeof data.changePercent === 'number' &&
-    typeof data.lastUpdated === 'number' &&
-    data.price > 0
+    typeof obj.symbol === 'string' &&
+    typeof obj.price === 'number' &&
+    typeof obj.change === 'number' &&
+    typeof obj.changePercent === 'number' &&
+    typeof obj.lastUpdated === 'number' &&
+    typeof obj.price === 'number' && obj.price > 0
   )
 }
 

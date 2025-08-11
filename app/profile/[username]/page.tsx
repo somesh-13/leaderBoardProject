@@ -365,13 +365,13 @@ export default function ProfilePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {portfolio.positions.map((position) => {
+                    {portfolio?.positions.map((position) => {
                       const stockData = stocks[position.symbol]
                       const currentPrice = stockData?.price || 0
                       const returnPercent = position.avgPrice > 0 ? ((currentPrice - position.avgPrice) / position.avgPrice) * 100 : 0
                       
                       // Debug logging for first position
-                      if (position.symbol === portfolio.positions[0]?.symbol) {
+                      if (position.symbol === portfolio?.positions[0]?.symbol) {
                         console.log(`🔍 Return calculation debug for ${position.symbol}:`, {
                           symbol: position.symbol,
                           avgPrice: position.avgPrice,
@@ -508,14 +508,14 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Tier</span>
-                  <span className={`text-sm font-medium px-2 py-1 rounded ${getTierBadgeStyle(portfolio.tier)}`}>
-                    {portfolio.tier}
+                  <span className={`text-sm font-medium px-2 py-1 rounded ${getTierBadgeStyle(portfolio?.tier || 'Bronze')}`}>
+                    {portfolio?.tier}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Last Update</span>
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {formatDate(portfolio.lastCalculated)}
+                    {formatDate(portfolio?.lastCalculated || Date.now())}
                   </span>
                 </div>
                 <div className="flex justify-between">

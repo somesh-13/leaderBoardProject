@@ -8,7 +8,7 @@ const DIVIDEND_CACHE_DURATION = 24 * 60 * 60 * 1000 // 24 hours
 
 // In-memory cache storage
 interface CacheEntry {
-  data: any
+  data: unknown
   timestamp: number
   expiry: number
 }

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 type Tab = {
   title: string | React.ReactNode;
   value: string;
-  content?: string | React.ReactNode | any;
+  content?: string | React.ReactNode;
 };
 
 export const Tabs = ({

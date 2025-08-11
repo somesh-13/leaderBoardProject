@@ -128,7 +128,9 @@ export async function GET(request: NextRequest) {
     // Clean up old cache entries (simple cleanup)
     if (leaderboardCache.size > 100) {
       const oldestKey = leaderboardCache.keys().next().value;
-      leaderboardCache.delete(oldestKey);
+      if (oldestKey !== undefined) {
+        leaderboardCache.delete(oldestKey);
+      }
     }
 
     console.log(`✅ Computed leaderboard with ${response.data.length} entries`);

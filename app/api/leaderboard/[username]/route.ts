@@ -45,7 +45,14 @@ export async function GET(
     }
 
     // Find the user in the leaderboard
-    const userEntry = leaderboardData.data.data.find((entry: any) => 
+    interface LeaderboardEntry {
+      user: {
+        username: string;
+      };
+      [key: string]: unknown;
+    }
+    
+    const userEntry = leaderboardData.data.data.find((entry: LeaderboardEntry) => 
       entry.user.username.toLowerCase() === username
     );
 

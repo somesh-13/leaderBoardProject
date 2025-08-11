@@ -6,7 +6,7 @@
  * Includes polling for real-time updates and deduplication
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { usePortfolioStore } from '@/lib/store/portfolioStore'
 
 export interface UseLivePricesOptions {
@@ -49,7 +49,7 @@ export function useLivePrices(options: UseLivePricesOptions = {}) {
   // Stable reference to symbols array to avoid unnecessary effect runs
   const symbolsKey = symbols?.join(',') || 'ALL_PORTFOLIO_SYMBOLS'
 
-  const fetchPrices = async () => {
+  const fetchPrices = useCallback(async () => {
     if (!mountedRef.current) return
     
     // Create a unique key for this request
@@ -88,7 +88,7 @@ export function useLivePrices(options: UseLivePricesOptions = {}) {
       // Clean up the pending request
       pendingRequests.delete(requestKey)
     }
-  }
+  }, [symbolsKey, fetchPolygonPrices, symbols])
 
   useEffect(() => {
     mountedRef.current = true
@@ -115,7 +115,7 @@ export function useLivePrices(options: UseLivePricesOptions = {}) {
         console.log(`🛑 useLivePrices: Stopped polling for symbols: ${symbolsKey}`)
       }
     }
-  }, [symbolsKey, intervalMs, fetchOnMount, enablePolling])
+  }, [symbolsKey, intervalMs, fetchOnMount, enablePolling, fetchPrices])
 
   // Manual refresh function that can be called by components
   const refreshPrices = async () => {
@@ -129,7 +129,7 @@ export function useLivePrices(options: UseLivePricesOptions = {}) {
       clearInterval(intervalRef.current)
       intervalRef.current = setInterval(fetchPrices, intervalMs)
     }
-  }, [intervalMs])
+  }, [intervalMs, fetchPrices, enablePolling])
 
   return {
     // State

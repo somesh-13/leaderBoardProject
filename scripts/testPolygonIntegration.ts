@@ -71,7 +71,7 @@ async function testCompletePriceData() {
       console.log(`   6/16/2025 Close: ${priceData.close_2025_06_16 !== null ? '$' + priceData.close_2025_06_16.toFixed(2) : 'N/A'}`)
       console.log(`   Current Price:   ${priceData.currentPrice !== null ? '$' + priceData.currentPrice.toFixed(2) : 'N/A'}`)
       
-      if (priceData.dayChangePercent !== null) {
+      if (priceData.dayChangePercent !== null && priceData.dayChangePercent !== undefined) {
         console.log(`   Day Change:      ${priceData.dayChangePercent >= 0 ? '+' : ''}${priceData.dayChangePercent.toFixed(2)}%`)
       }
       

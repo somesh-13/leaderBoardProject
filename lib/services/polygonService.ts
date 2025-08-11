@@ -152,7 +152,7 @@ export async function getSnapshotPrice(ticker: string): Promise<{
     const dayChangePercent = data.todaysChangePerc ?? null
     
     if (price !== null) {
-      console.log(`✅ Current snapshot for ${ticker}: $${price.toFixed(2)} (${dayChangePercent >= 0 ? '+' : ''}${dayChangePercent?.toFixed(2)}%)`)
+      console.log(`✅ Current snapshot for ${ticker}: $${price.toFixed(2)} (${dayChangePercent !== null && dayChangePercent >= 0 ? '+' : ''}${dayChangePercent?.toFixed(2) || 'N/A'}%)`)
     }
     
     return { price, timestamp, prevClose, dayChange, dayChangePercent }

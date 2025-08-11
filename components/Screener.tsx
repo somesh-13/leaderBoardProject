@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { getCurrentPrice } from '@/lib/polygon'
-import { TrendingUp, TrendingDown, Search, Filter } from 'lucide-react'
+import { TrendingUp, TrendingDown, Search } from 'lucide-react'
 
 interface ScreenerAsset {
   name: string
@@ -22,8 +22,8 @@ export default function Screener() {
   const [filter, setFilter] = useState<'all' | 'gainers' | 'losers'>('all')
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Trending tickers to fetch
-  const trendingTickers = [
+  // Trending tickers to fetch - memoized to prevent recreating on every render
+  const trendingTickers = useMemo(() => [
     { name: 'S&P 500', symbol: 'SPY', sector: 'Index', type: 'Index' as const },
     { name: 'NASDAQ', symbol: 'QQQ', sector: 'Index', type: 'Index' as const },
     { name: 'Apple', symbol: 'AAPL', sector: 'Technology', type: 'Stock' as const },
@@ -36,7 +36,7 @@ export default function Screener() {
     { name: 'Netflix', symbol: 'NFLX', sector: 'Entertainment', type: 'Stock' as const },
     { name: 'Palantir', symbol: 'PLTR', sector: 'Technology', type: 'Stock' as const },
     { name: 'Rocket Lab', symbol: 'RKLB', sector: 'Aerospace', type: 'Stock' as const },
-  ]
+  ], [])
 
   useEffect(() => {
     const fetchScreenerData = async () => {
@@ -65,7 +65,7 @@ export default function Screener() {
     }
 
     fetchScreenerData()
-  }, [])
+  }, [trendingTickers])
 
   // Filter assets based on selected filter and search term
   const filteredAssets = assets
@@ -176,7 +176,7 @@ export default function Screener() {
                 </tr>
               </thead>
               <tbody>
-                {filteredAssets.map((asset, index) => (
+                {filteredAssets.map((asset) => (
                   <tr key={asset.symbol} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <td className="py-4 px-6">
                       <div>
