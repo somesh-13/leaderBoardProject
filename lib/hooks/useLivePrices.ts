@@ -3,7 +3,7 @@
  * 
  * Automatically fetches and updates stock prices from Polygon API
  * Supports both specific symbols and all portfolio symbols
- * Includes polling for real-time updates
+ * Includes polling for real-time updates and deduplication
  */
 
 import { useEffect, useRef } from 'react'
@@ -19,6 +19,10 @@ export interface UseLivePricesOptions {
   /** Whether to enable polling. Default: true */
   enablePolling?: boolean
 }
+
+// Global cache to prevent duplicate API calls
+const pendingRequests = new Map<string, Promise<void>>()
+const lastFetchTimes = new Map<string, number>()
 
 /**
  * Hook to automatically fetch and update live stock prices
@@ -48,11 +52,41 @@ export function useLivePrices(options: UseLivePricesOptions = {}) {
   const fetchPrices = async () => {
     if (!mountedRef.current) return
     
+    // Create a unique key for this request
+    const requestKey = symbolsKey
+    const now = Date.now()
+    
+    // Check if we recently fetched this data (within 5 seconds)
+    const lastFetch = lastFetchTimes.get(requestKey)
+    if (lastFetch && now - lastFetch < 5000) {
+      console.log(`⏭️ useLivePrices: Skipping duplicate request for ${symbolsKey} (last fetch ${now - lastFetch}ms ago)`)
+      return
+    }
+    
+    // Check if there's already a pending request for these symbols
+    const existingRequest = pendingRequests.get(requestKey)
+    if (existingRequest) {
+      console.log(`⏳ useLivePrices: Waiting for existing request for ${symbolsKey}`)
+      await existingRequest
+      return
+    }
+    
     try {
       console.log(`🔄 useLivePrices: Fetching prices for ${symbols?.length || 'all'} symbols`)
-      await fetchPolygonPrices(symbols)
+      
+      // Create and store the promise
+      const fetchPromise = fetchPolygonPrices(symbols)
+      pendingRequests.set(requestKey, fetchPromise)
+      lastFetchTimes.set(requestKey, now)
+      
+      await fetchPromise
+      
+      console.log(`✅ useLivePrices: Successfully fetched prices for ${symbolsKey}`)
     } catch (error) {
       console.error('❌ useLivePrices: Failed to fetch prices:', error)
+    } finally {
+      // Clean up the pending request
+      pendingRequests.delete(requestKey)
     }
   }
 

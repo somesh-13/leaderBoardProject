@@ -449,7 +449,9 @@ export const usePortfolioStore = create<PortfolioStore>()(
 
         getPortfolioByUser: (username) => {
           const { portfolios } = get()
-          return Object.values(portfolios).find(p => p.username === username)
+          return Object.values(portfolios).find(p => 
+            p.username.toLowerCase() === username.toLowerCase()
+          )
         },
 
         getFilteredLeaderboard: () => {

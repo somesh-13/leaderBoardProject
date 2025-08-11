@@ -2,48 +2,8 @@
 
 import Link from 'next/link'
 import { BackgroundLines } from '@/components/ui/background-lines'
-import { useState, useEffect } from 'react'
-import { getCurrentPrice } from '@/lib/polygon'
 
 export default function Home() {
-  const [marketAssets, setMarketAssets] = useState([
-    { name: 'S&P 500', symbol: 'SPY', value: 4783.45, change: 1.2, type: 'Index' },
-    { name: 'NASDAQ', symbol: 'QQQ', value: 15234.78, change: -0.8, type: 'Index' },
-    { name: 'Apple', symbol: 'AAPL', value: 175.23, change: 0.5, type: 'Stock' },
-    { name: 'Tesla', symbol: 'TSLA', value: 245.67, change: 2.8, type: 'Stock' },
-    { name: 'Microsoft', symbol: 'MSFT', value: 325.12, change: -1.2, type: 'Stock' },
-    { name: 'Meta', symbol: 'META', value: 298.45, change: 0.3, type: 'Stock' }
-  ])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchMarketData = async () => {
-      setIsLoading(true)
-      const assetTemplates = [
-        { name: 'S&P 500', symbol: 'SPY', type: 'Index' },
-        { name: 'NASDAQ', symbol: 'QQQ', type: 'Index' },
-        { name: 'Apple', symbol: 'AAPL', type: 'Stock' },
-        { name: 'Tesla', symbol: 'TSLA', type: 'Stock' },
-        { name: 'Microsoft', symbol: 'MSFT', type: 'Stock' },
-        { name: 'Meta', symbol: 'META', type: 'Stock' }
-      ]
-      
-      const updatedAssets = await Promise.all(
-        assetTemplates.map(async (asset) => {
-          const { price, change } = await getCurrentPrice(asset.symbol)
-          return {
-            ...asset,
-            value: price,
-            change: change
-          }
-        })
-      )
-      setMarketAssets(updatedAssets)
-      setIsLoading(false)
-    }
-
-    fetchMarketData()
-  }, [])
 
   return (
     <div>
@@ -68,6 +28,9 @@ export default function Home() {
               <Link href="/leaderboard" className="btn-primary text-center text-lg px-8 py-4 font-semibold transform hover:scale-105 transition-all">
                 View Leaderboard
               </Link>
+              <Link href="/screener" className="btn-secondary text-center text-lg px-8 py-4 font-semibold transform hover:scale-105 transition-all">
+                Market Screener
+              </Link>
               <Link href="/terminal" className="btn-secondary text-center text-lg px-8 py-4 font-semibold transform hover:scale-105 transition-all">
                 Test a Strategy
               </Link>
@@ -78,64 +41,6 @@ export default function Home() {
 
       {/* Content Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-
-      {/* Market Overview */}
-      <div className="mb-16">
-        {/* Market Assets Table */}
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-300">
-            Market Overview
-          </h3>
-          <div className="overflow-x-auto">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-gray-600 dark:text-gray-400">Loading market data...</span>
-              </div>
-            ) : (
-              <table className="min-w-full">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="text-left py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Asset</th>
-                    <th className="text-right py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Price</th>
-                    <th className="text-right py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Change</th>
-                    <th className="text-right py-2 text-sm font-medium text-gray-500 dark:text-gray-400">Type</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {marketAssets.map((asset, index) => (
-                    <tr key={index} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                      <td className="py-3">
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{asset.name}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{asset.symbol}</p>
-                        </div>
-                      </td>
-                      <td className="py-3 text-right font-medium text-gray-900 dark:text-white">
-                        {asset.value.toLocaleString()}
-                      </td>
-                      <td className={`py-3 text-right font-semibold ${
-                        asset.change >= 0 ? 'text-gain' : 'text-loss'
-                      }`}>
-                        {asset.change >= 0 ? '+' : ''}{asset.change.toFixed(2)}%
-                      </td>
-                      <td className="py-3 text-right">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          asset.type === 'Index' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' :
-                          asset.type === 'Crypto' ? 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200' :
-                          'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-                        }`}>
-                          {asset.type}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* Features Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">

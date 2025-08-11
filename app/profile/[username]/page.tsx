@@ -2,10 +2,11 @@
 
 import { useParams } from 'next/navigation'
 import { useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, TrendingUp, TrendingDown, Target, Calendar, Briefcase } from 'lucide-react'
 import { useUserPortfolio, useInitializeDemoData } from '@/lib/hooks/usePortfolioData'
-import { useStocks } from '@/lib/store/portfolioStore'
+import { useStocks, usePortfolioStore } from '@/lib/store/portfolioStore'
 import { formatCurrency, formatPercentage } from '@/lib/utils/portfolioCalculations'
 import { useSymbolPrices } from '@/lib/hooks/useLivePrices'
 
@@ -14,6 +15,7 @@ import { useSymbolPrices } from '@/lib/hooks/useLivePrices'
 export default function ProfilePage() {
   // Initialize demo data and track initialization state
   const isInitialized = useInitializeDemoData()
+  const [isReady, setIsReady] = useState(false)
   
   const params = useParams()
   const username = params.username as string
@@ -29,6 +31,22 @@ export default function ProfilePage() {
     error: pricesError, 
     lastFetchAt 
   } = useSymbolPrices(portfolioSymbols, 60000) // Refresh every 60 seconds
+
+  // Get portfolio store data
+  const portfolioStore = usePortfolioStore()
+  const hasAnyPortfolios = Object.keys(portfolioStore.portfolios).length > 0
+  const hasStocks = Object.keys(stocks).length > 0
+
+  // Wait for data to be fully loaded before showing content
+  useEffect(() => {
+    if (isInitialized && hasAnyPortfolios) {
+      // Small delay to ensure state updates have propagated
+      const timer = setTimeout(() => {
+        setIsReady(true)
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [isInitialized, hasAnyPortfolios])
 
   // Debug logging
   console.log('🔍 ProfilePage Debug:', {
@@ -115,8 +133,28 @@ export default function ProfilePage() {
     }
   }, [portfolio?.positions, stocks])
 
-  // Improved loading state - show loading if data is being fetched OR if not initialized yet OR if portfolio is not found yet but no error
-  const isLoading = !isInitialized || loading || (!portfolio && !error)
+  // Show loading if:
+  // 1. Not initialized yet, OR
+  // 2. Not ready yet (waiting for state propagation), OR
+  // 3. Store is actively loading
+  const isLoading = !isInitialized || !isReady || loading
+
+  // Debug the loading state
+  console.log('🔍 Loading State Debug:', {
+    username,
+    isInitialized,
+    isReady,
+    loading,
+    hasPortfolio: !!portfolio,
+    hasAnyPortfolios,
+    hasStocks,
+    portfolioCount: Object.keys(portfolioStore.portfolios).length,
+    finalIsLoading: isLoading,
+    error
+  })
+
+  // Only show error if we're fully ready but can't find the specific user
+  const shouldShowError = error || (isReady && !loading && !portfolio)
 
   if (isLoading) {
     return (
@@ -139,8 +177,8 @@ export default function ProfilePage() {
     )
   }
 
-  // Only show error if there's an actual error OR if we're initialized, not loading, and still no portfolio
-  if (error || (isInitialized && !loading && !portfolio)) {
+  // Only show error if we have data loaded but can't find the specific user
+  if (shouldShowError) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
