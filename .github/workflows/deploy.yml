@@ -47,7 +47,8 @@ jobs:
       - name: Remove dynamic routes and API for static export
         run: |
           rm -rf app/api
-          rm -rf "app/profile/[username]"
+          find app -name '\[*\]' -type d -exec rm -rf {} +
+          ls -la app/profile/ || echo "Profile directory structure:"
 
       - name: Build Next.js app
         run: npm run build
