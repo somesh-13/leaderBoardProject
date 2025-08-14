@@ -22,6 +22,8 @@ export interface PositionMetrics {
   invested: number
   unrealizedGain: number
   unrealizedGainPercent: number
+  sinceDateGain: number
+  sinceDateGainPercent: number
   dayChange: number
   dayChangePercent: number
   dayChangeValue: number
@@ -36,9 +38,18 @@ export function calculatePositionMetrics(
   historicalPrice?: number
 ): PositionMetrics {
   const currentPrice = stockData.price || 0
-  const previousClose = stockData.previousClose || historicalPrice || currentPrice
+  // Use historical price from stock data if available, then fallback to parameter, then previous close
+  const basePrice = stockData.historicalPrice || historicalPrice || stockData.previousClose || currentPrice
+  const previousClose = stockData.previousClose || currentPrice
   const currentValue = position.shares * currentPrice
   const invested = position.shares * position.avgPrice
+  
+  // Calculate performance since the selected date (using basePrice)
+  const sinceDateValue = position.shares * basePrice
+  const sinceDateGain = currentValue - sinceDateValue
+  const sinceDateGainPercent = sinceDateValue > 0 ? (sinceDateGain / sinceDateValue) * 100 : 0
+  
+  // Keep original unrealized gain calculation based on purchase price
   const unrealizedGain = currentValue - invested
   const unrealizedGainPercent = invested > 0 ? (unrealizedGain / invested) * 100 : 0
   
@@ -55,6 +66,8 @@ export function calculatePositionMetrics(
     invested,
     unrealizedGain,
     unrealizedGainPercent,
+    sinceDateGain,
+    sinceDateGainPercent,
     dayChange: dayPriceChange,
     dayChangePercent,
     dayChangeValue
@@ -96,15 +109,22 @@ export function calculatePortfolioMetrics(
   const totalReturnPercent = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0
   const dayChangePercent = totalValue > 0 ? (totalDayChange / (totalValue - totalDayChange)) * 100 : 0
   
-  // Find best and worst performers
-  const sortedByReturn = [...positionMetrics].sort((a, b) => b.unrealizedGainPercent - a.unrealizedGainPercent)
+  // Calculate since-date performance for the portfolio
+  let totalSinceDateValue = 0
+  positionMetrics.forEach(metrics => {
+    totalSinceDateValue += metrics.sinceDateGain
+  })
+  const totalSinceDatePercent = totalValue > 0 ? (totalSinceDateValue / (totalValue - totalSinceDateValue)) * 100 : 0
+  
+  // Find best and worst performers based on since-date performance
+  const sortedByReturn = [...positionMetrics].sort((a, b) => b.sinceDateGainPercent - a.sinceDateGainPercent)
   
   const topPerformer = sortedByReturn.length > 0 
-    ? { symbol: sortedByReturn[0].symbol, return: sortedByReturn[0].unrealizedGainPercent }
+    ? { symbol: sortedByReturn[0].symbol, return: sortedByReturn[0].sinceDateGainPercent }
     : { symbol: '', return: 0 }
     
   const worstPerformer = sortedByReturn.length > 0
-    ? { symbol: sortedByReturn[sortedByReturn.length - 1].symbol, return: sortedByReturn[sortedByReturn.length - 1].unrealizedGainPercent }
+    ? { symbol: sortedByReturn[sortedByReturn.length - 1].symbol, return: sortedByReturn[sortedByReturn.length - 1].sinceDateGainPercent }
     : { symbol: '', return: 0 }
 
   return {
@@ -112,6 +132,8 @@ export function calculatePortfolioMetrics(
     totalInvested,
     totalReturn,
     totalReturnPercent,
+    totalSinceDateReturn: totalSinceDateValue,
+    totalSinceDatePercent,
     dayChange: totalDayChange,
     dayChangePercent,
     topPerformer,

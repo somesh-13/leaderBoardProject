@@ -79,6 +79,7 @@ interface PortfolioStore {
 
   // Actions - Polygon Integration
   fetchPolygonPrices: (symbols?: string[]) => Promise<void>
+  fetchPerformanceDataForDate: (date: string) => Promise<void>
   mergeStocks: (stocks: Record<string, StockData>) => void
   lastPolygonFetchAt: number
   polygonFetchError: string | null
@@ -245,7 +246,11 @@ export const usePortfolioStore = create<PortfolioStore>()(
         })),
 
         setSorting: (sortField, sortDirection) => set({ sortField, sortDirection }),
-        setPerformanceSinceDate: (performanceSinceDate) => set({ performanceSinceDate }),
+        setPerformanceSinceDate: (performanceSinceDate) => {
+          set({ performanceSinceDate })
+          // Trigger polygon API call when date changes to fetch updated historical data
+          get().fetchPerformanceDataForDate(performanceSinceDate)
+        },
 
         // Data Fetching Actions - Direct Polygon API calls
         fetchStockPrices: async (symbols) => {
@@ -358,16 +363,30 @@ export const usePortfolioStore = create<PortfolioStore>()(
         refreshPortfolios: async () => {
           set({ portfoliosLoading: true })
           try {
-            // This would typically fetch from an API
-            // For now, we'll recalculate based on current stock prices
-            const { portfolios } = get()
+            const { portfolios, stocks } = get()
+            const { calculatePortfolioMetrics } = await import('@/lib/utils/portfolioCalculations')
             const updatedPortfolios: Record<string, Portfolio> = {}
 
             Object.entries(portfolios).forEach(([userId, portfolio]) => {
+              // Calculate updated metrics using current stock data (including historical prices)
+              const metrics = calculatePortfolioMetrics({
+                positions: portfolio.positions,
+                stockPrices: stocks
+              })
+
+              // Use since-date performance if available, otherwise fall back to total return
+              const performanceReturn = metrics.totalSinceDatePercent !== undefined 
+                ? metrics.totalSinceDatePercent 
+                : metrics.totalReturnPercent
+
               updatedPortfolios[userId] = {
                 ...portfolio,
+                totalValue: metrics.totalValue,
+                totalReturn: metrics.totalSinceDateReturn || metrics.totalReturn,
+                totalReturnPercent: performanceReturn,
+                dayChange: metrics.dayChange,
+                dayChangePercent: metrics.dayChangePercent,
                 lastCalculated: Date.now()
-                // Portfolio calculations would be done here
               }
             })
 
@@ -545,6 +564,97 @@ export const usePortfolioStore = create<PortfolioStore>()(
             set({ 
               stocksLoading: false,
               polygonFetchError: errorMessage,
+              lastPolygonFetchAt: Date.now()
+            })
+          }
+        },
+
+        // New method to fetch performance data for a specific date
+        fetchPerformanceDataForDate: async (date: string) => {
+          try {
+            console.log(`🔄 Fetching performance data for date: ${date}`)
+            
+            // Get all unique symbols from portfolios
+            const { portfolios } = get()
+            const allSymbols = new Set<string>()
+            
+            Object.values(portfolios).forEach(portfolio => {
+              portfolio.positions.forEach(position => {
+                allSymbols.add(position.symbol)
+              })
+            })
+
+            const symbolsArray = Array.from(allSymbols)
+            if (symbolsArray.length === 0) {
+              console.warn('⚠️ No symbols found to fetch historical data')
+              return
+            }
+
+            console.log(`📊 Fetching historical data for ${symbolsArray.length} symbols on ${date}`)
+            
+            // Set loading state
+            set({ stocksLoading: true, stocksError: null })
+            
+            // Import the historical data service
+            const { getDailyClose } = await import('@/lib/services/polygonService')
+            
+            // Fetch historical prices for all symbols in parallel
+            const historicalPrices = await Promise.allSettled(
+              symbolsArray.map(async (symbol) => {
+                const price = await getDailyClose(symbol, date)
+                return { symbol, price }
+              })
+            )
+
+            // Process the results and update stock data
+            const updatedStocks: Record<string, StockData> = { ...get().stocks }
+            let successCount = 0
+            
+            historicalPrices.forEach((result, index) => {
+              const symbol = symbolsArray[index]
+              
+              if (result.status === 'fulfilled' && result.value.price !== null) {
+                const { price } = result.value
+                
+                // Update the historical price while preserving current price data
+                const existingStock = updatedStocks[symbol]
+                updatedStocks[symbol] = {
+                  ...existingStock,
+                  symbol,
+                  // Use historical price as the base price for performance calculation
+                  historicalPrice: price,
+                  historicalDate: date,
+                  lastUpdated: Date.now()
+                }
+                successCount++
+                console.log(`✅ Updated historical price for ${symbol}: $${price.toFixed(2)} on ${date}`)
+              } else {
+                console.warn(`⚠️ Failed to fetch historical price for ${symbol}`)
+              }
+            })
+
+            // Update the store with new historical data
+            set({ 
+              stocks: updatedStocks,
+              lastStockUpdate: Date.now(),
+              stocksLoading: false,
+              stocksError: null,
+              lastPolygonFetchAt: Date.now()
+            })
+
+            console.log(`✅ Historical data fetch completed: ${successCount}/${symbolsArray.length} symbols updated`)
+            
+            // Refresh portfolio calculations with new historical data
+            get().refreshPortfolios()
+            get().refreshLeaderboard()
+            
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to fetch performance data'
+            console.error('❌ Error fetching performance data for date:', error)
+            
+            set({ 
+              stocksLoading: false,
+              stocksError: errorMessage,
               lastPolygonFetchAt: Date.now()
             })
           }

@@ -15,6 +15,8 @@ export interface StockData {
   low?: number
   open?: number
   previousClose?: number
+  historicalPrice?: number
+  historicalDate?: string
 }
 
 export interface Position {
@@ -82,6 +84,8 @@ export interface PortfolioMetrics {
   totalInvested: number
   totalReturn: number
   totalReturnPercent: number
+  totalSinceDateReturn?: number
+  totalSinceDatePercent?: number
   dayChange: number
   dayChangePercent: number
   topPerformer: {
