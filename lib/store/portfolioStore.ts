@@ -495,8 +495,8 @@ export const usePortfolioStore = create<PortfolioStore>()(
           console.log('🔍 getSortedLeaderboard - Filtered leaderboard length:', filtered.length)
           
           return [...filtered].sort((a, b) => {
-            let aVal: any
-            let bVal: any
+            let aVal: string | number | undefined
+            let bVal: string | number | undefined
             
             // Safe property access with proper mapping
             switch (sortField) {

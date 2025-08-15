@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, BarChart3, Calendar, Clock } from 'lucide-react'
+import { ArrowLeft, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react'
 
 interface StockDetailData {
   ticker: string

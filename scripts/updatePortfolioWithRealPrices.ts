@@ -7,7 +7,7 @@
  * Usage: npx tsx scripts/updatePortfolioWithRealPrices.ts
  */
 
-import { getBatchPriceData, normalizeTicker } from '../lib/services/polygonService'
+import { getBatchPriceData } from '../lib/services/polygonService'
 import { INITIAL_PORTFOLIOS } from '../lib/data/initialPortfolios'
 import fs from 'fs'
 import path from 'path'
@@ -62,7 +62,7 @@ async function main() {
     const updatedPortfolios = { ...INITIAL_PORTFOLIOS }
     
     // Update each trader's portfolio
-    Object.entries(updatedPortfolios).forEach(([traderId, portfolio]) => {
+    Object.entries(updatedPortfolios).forEach(([, portfolio]) => {
       console.log(`\n🔄 Updating ${portfolio.username}'s portfolio...`)
       
       portfolio.positions = portfolio.positions.map(position => {

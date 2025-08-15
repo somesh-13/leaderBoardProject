@@ -81,8 +81,8 @@ export default function Leaderboard() {
     
     // Apply sorting
     return [...data].sort((a, b) => {
-      let aVal: any
-      let bVal: any
+      let aVal: string | number | undefined
+      let bVal: string | number | undefined
       
       switch (sortField) {
         case 'rank':
