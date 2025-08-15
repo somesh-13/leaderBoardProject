@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getHistoricalPriceService, type HistoricalDataPoint, type TimeRange } from '@/lib/services/historicalPriceService'
 
 interface StockDetailData {
   ticker: string
@@ -17,6 +18,7 @@ interface StockDetailData {
   yearLow?: number
   avgVolume?: number
   lastUpdated: string
+  historicalData?: HistoricalDataPoint[]
 }
 
 // Mock company names for common tickers
@@ -162,6 +164,9 @@ export async function GET(
   { params }: { params: { ticker: string } }
 ) {
   const ticker = params.ticker.toUpperCase()
+  const { searchParams } = new URL(request.url)
+  const timeRange = (searchParams.get('timeRange') as TimeRange) || '1M'
+  const includeHistory = searchParams.get('includeHistory') !== 'false'
   
   try {
     // Try to fetch real data from Polygon API
@@ -172,6 +177,29 @@ export async function GET(
       console.log(`Using mock data for ${ticker}`)
       stockData = generateMockStockData(ticker)
     }
+
+    // Fetch historical data if requested
+    if (includeHistory) {
+      try {
+        const apiKey = process.env.NEXT_PUBLIC_POLYGON_API_KEY
+        if (apiKey) {
+          const historicalService = getHistoricalPriceService()
+          const historicalResponse = await historicalService.getHistoricalData(ticker, timeRange)
+          stockData.historicalData = historicalResponse.results
+          console.log(`✅ Added ${historicalResponse.results.length} historical data points`)
+        } else {
+          throw new Error('No API key available')
+        }
+      } catch (historicalError) {
+        console.warn(`⚠️ Failed to fetch historical data for ${ticker}, using mock:`, historicalError)
+        // Generate mock historical data as fallback
+        const apiKey = process.env.NEXT_PUBLIC_POLYGON_API_KEY || 'mock'
+        const historicalService = new (await import('@/lib/services/historicalPriceService')).HistoricalPriceService(apiKey)
+        const mockHistoricalData = historicalService.generateMockHistoricalData(ticker, timeRange, stockData.price)
+        stockData.historicalData = mockHistoricalData.results
+        console.log(`📊 Generated ${mockHistoricalData.results.length} mock historical data points`)
+      }
+    }
     
     return NextResponse.json(stockData)
   } catch (error) {
@@ -179,6 +207,20 @@ export async function GET(
     
     // Return mock data as fallback
     const mockData = generateMockStockData(ticker)
+    
+    // Add mock historical data if requested
+    if (includeHistory) {
+      try {
+        const apiKey = process.env.NEXT_PUBLIC_POLYGON_API_KEY || 'mock'
+        const historicalService = new (await import('@/lib/services/historicalPriceService')).HistoricalPriceService(apiKey)
+        const mockHistoricalData = historicalService.generateMockHistoricalData(ticker, timeRange, mockData.price)
+        mockData.historicalData = mockHistoricalData.results
+      } catch {
+        // If even mock data fails, just return without historical data
+        console.warn(`⚠️ Could not generate mock historical data for ${ticker}`)
+      }
+    }
+    
     return NextResponse.json(mockData)
   }
 }

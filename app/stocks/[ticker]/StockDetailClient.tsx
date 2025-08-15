@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react'
+import StockPriceChart from '@/components/charts/StockPriceChart'
+import type { HistoricalDataPoint, TimeRange } from '@/lib/services/historicalPriceService'
 
 interface StockDetailData {
   ticker: string
@@ -21,6 +23,7 @@ interface StockDetailData {
   yearLow?: number
   avgVolume?: number
   lastUpdated: string
+  historicalData?: HistoricalDataPoint[]
 }
 
 interface StockDetailClientProps {
@@ -31,6 +34,7 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
   const [stockData, setStockData] = useState<StockDetailData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [timeRange, setTimeRange] = useState<TimeRange>('1M')
 
   useEffect(() => {
     const fetchStockDetail = async () => {
@@ -38,7 +42,7 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
         setLoading(true)
         setError(null)
         
-        const response = await fetch(`/api/stocks/${ticker}`)
+        const response = await fetch(`/api/stocks/${ticker}?timeRange=${timeRange}&includeHistory=true`)
         if (!response.ok) {
           throw new Error(`Failed to fetch data for ${ticker}`)
         }
@@ -56,7 +60,11 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
     if (ticker) {
       fetchStockDetail()
     }
-  }, [ticker])
+  }, [ticker, timeRange])
+
+  const handleTimeRangeChange = (newTimeRange: TimeRange) => {
+    setTimeRange(newTimeRange)
+  }
 
   if (loading) {
     return (
@@ -164,18 +172,28 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
               </div>
             </div>
 
-            {/* Chart Placeholder */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Price Chart
-              </h2>
-              <div className="h-64 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-500 dark:text-gray-400">Chart coming soon</p>
+            {/* Price Chart */}
+            {stockData.historicalData && stockData.historicalData.length > 0 ? (
+              <StockPriceChart
+                ticker={stockData.ticker}
+                data={stockData.historicalData}
+                timeRange={timeRange}
+                onTimeRangeChange={handleTimeRangeChange}
+                className="mb-6"
+              />
+            ) : (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 mb-6">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Price Chart
+                </h2>
+                <div className="h-64 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-500 dark:text-gray-400">Loading chart data...</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* News Placeholder */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
