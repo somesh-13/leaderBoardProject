@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { Users, ArrowRight, TrendingUp } from 'lucide-react'
 import { useInitializeDemoData, useLeaderboardData } from '@/lib/hooks/usePortfolioData'
 import { formatPercentage } from '@/lib/utils/portfolioCalculations'
+import StockLink from '@/components/navigation/StockLink'
 
 export default function ProfilePage() {
   // const router = useRouter()
@@ -96,7 +97,7 @@ export default function ProfilePage() {
                         {trader.username}
                       </h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {trader.sector} • {trader.primaryStock}
+                        {trader.sector} • <StockLink ticker={trader.primaryStock} className="hover:text-blue-600 dark:hover:text-blue-400">{trader.primaryStock}</StockLink>
                       </p>
                     </div>
                   </div>
@@ -122,12 +123,13 @@ export default function ProfilePage() {
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {trader.portfolio?.slice(0, 4).map((stock) => (
-                      <span 
+                      <StockLink 
                         key={stock}
-                        className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded"
+                        ticker={stock}
+                        className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
                       >
                         {stock}
-                      </span>
+                      </StockLink>
                     ))}
                     {trader.portfolio && trader.portfolio.length > 4 && (
                       <span className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">

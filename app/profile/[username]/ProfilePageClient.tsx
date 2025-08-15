@@ -8,6 +8,7 @@ import { useUserPortfolio, useInitializeDemoData } from '@/lib/hooks/usePortfoli
 import { useStocks, usePortfolioStore } from '@/lib/store/portfolioStore'
 import { formatCurrency, formatPercentage } from '@/lib/utils/portfolioCalculations'
 import { useSymbolPrices } from '@/lib/hooks/useLivePrices'
+import StockLink from '@/components/navigation/StockLink'
 
 interface ProfilePageClientProps {
   username: string
@@ -331,7 +332,7 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                 </div>
                 <div className="mt-4 flex items-center gap-2">
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Primary: {portfolioMetrics.primaryStock}
+                    Primary: <StockLink ticker={portfolioMetrics.primaryStock} className="hover:text-blue-600 dark:hover:text-blue-400">{portfolioMetrics.primaryStock}</StockLink>
                   </span>
                 </div>
               </div>
@@ -388,9 +389,9 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                         <tr key={position.symbol} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              <StockLink ticker={position.symbol} className="text-sm font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                                 {position.symbol}
-                              </span>
+                              </StockLink>
                               <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
                                 {position.sector || 'N/A'}
                               </span>
@@ -433,9 +434,9 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <StockLink ticker={topPosition.symbol} className="text-2xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                       {topPosition.symbol}
-                    </span>
+                    </StockLink>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {topPosition.shares.toLocaleString()} shares
                     </p>
@@ -466,9 +467,9 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <StockLink ticker={worstPosition.symbol} className="text-2xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                       {worstPosition.symbol}
-                    </span>
+                    </StockLink>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {worstPosition.shares.toLocaleString()} shares
                     </p>

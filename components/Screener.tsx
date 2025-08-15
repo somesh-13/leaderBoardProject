@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { getCurrentPrice } from '@/lib/polygon'
 import { TrendingUp, TrendingDown, Search } from 'lucide-react'
+import StockLink from '@/components/navigation/StockLink'
 
 interface ScreenerAsset {
   name: string
@@ -180,7 +181,9 @@ export default function Screener() {
                   <tr key={asset.symbol} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <td className="py-4 px-6">
                       <div>
-                        <p className="font-semibold text-gray-900 dark:text-white">{asset.symbol}</p>
+                        <StockLink ticker={asset.symbol} className="font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
+                          {asset.symbol}
+                        </StockLink>
                         <p className="text-sm text-gray-500 dark:text-gray-400">{asset.name}</p>
                       </div>
                     </td>

@@ -8,6 +8,7 @@ import { AnimatedTooltip } from '@/components/ui/animated-tooltip'
 import TraderCard from '@/components/leaderboard/TraderCard'
 import MobileFilters from '@/components/leaderboard/MobileFilters'
 import FloatingActions from '@/components/leaderboard/FloatingActions'
+import StockLink from '@/components/navigation/StockLink'
 
 // Import new hooks and types
 import { useInitializeDemoData, useLeaderboardData, usePortfolioFilters, useAutoRefresh } from '@/lib/hooks/usePortfolioData'
@@ -420,14 +421,16 @@ export default function Leaderboard() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white font-medium">
-                    {entry.primaryStock}
+                    <StockLink ticker={entry.primaryStock} className="hover:text-blue-600 dark:hover:text-blue-400">
+                      {entry.primaryStock}
+                    </StockLink>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1 max-w-xs">
                       {entry.portfolio.slice(0, 6).map((stock, index) => (
-                        <span key={index} className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
+                        <StockLink key={index} ticker={stock} className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors">
                           {stock}
-                        </span>
+                        </StockLink>
                       ))}
                       {entry.portfolio.length > 6 && (
                         <span className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">

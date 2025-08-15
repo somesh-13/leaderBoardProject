@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import StockLink from '@/components/navigation/StockLink'
 
 interface LeaderboardEntry {
   rank: number
@@ -107,9 +108,9 @@ export default function TraderCard({ entry, isLoadingReturns }: TraderCardProps)
         
         <div className="flex flex-col items-end">
           <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Primary Stock</span>
-          <span className="text-lg font-semibold text-gray-900 dark:text-white">
+          <StockLink ticker={entry.primaryStock} className="text-lg font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
             {entry.primaryStock}
-          </span>
+          </StockLink>
         </div>
       </div>
 
@@ -133,12 +134,13 @@ export default function TraderCard({ entry, isLoadingReturns }: TraderCardProps)
         </div>
         <div className="flex flex-wrap gap-1 mt-2">
           {entry.portfolio.slice(0, 3).map((stock, index) => (
-            <span 
+            <StockLink 
               key={index} 
-              className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded"
+              ticker={stock}
+              className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
             >
               {stock}
-            </span>
+            </StockLink>
           ))}
           {entry.portfolio.length > 3 && (
             <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
