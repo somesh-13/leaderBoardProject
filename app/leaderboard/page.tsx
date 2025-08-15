@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Filter, RotateCcw } from 'lucide-react'
@@ -20,11 +20,12 @@ export default function Leaderboard() {
   
   // Use global state hooks
   const { leaderboard, loading: isLoadingReturns } = useLeaderboardData()
-  const { filters, sortField, sortDirection, setFilters, setSorting } = usePortfolioFilters()
+  const { filters, sortField, sortDirection, filteredData, setFilters, setSorting } = usePortfolioFilters()
   const store = usePortfolioStore()
   
   // Debug logging
   console.log('🔍 Leaderboard component - leaderboard length:', leaderboard.length)
+  console.log('🔍 Leaderboard component - filteredData length:', filteredData.length)
   console.log('🔍 Leaderboard component - isLoadingReturns:', isLoadingReturns)
   
   // Local UI state
@@ -61,7 +62,71 @@ export default function Leaderboard() {
   }
 
   // Use the filtered and sorted data directly from global state
-  const sortedAndFilteredData = leaderboardData
+  // Since filteredData comes from store.leaderboard which might be outdated,
+  // we need to apply sorting and filtering to the dynamically calculated leaderboard
+  const sortedAndFilteredData = useMemo(() => {
+    let data = leaderboardData
+    
+    // Apply filters
+    if (filters.sector !== 'all') {
+      data = data.filter(entry => entry.sector === filters.sector)
+    }
+    if (filters.company !== 'all') {
+      data = data.filter(entry => entry.portfolio.includes(filters.company))
+    }
+    if (filters.asset !== 'all') {
+      data = data.filter(entry => entry.portfolio.includes(filters.asset))
+    }
+    
+    // Apply sorting
+    return [...data].sort((a, b) => {
+      let aVal: any
+      let bVal: any
+      
+      switch (sortField) {
+        case 'rank':
+          aVal = a.rank
+          bVal = b.rank
+          break
+        case 'username':
+          aVal = a.username
+          bVal = b.username
+          break
+        case 'return':
+          aVal = a.calculatedReturn !== undefined ? a.calculatedReturn : a.return
+          bVal = b.calculatedReturn !== undefined ? b.calculatedReturn : b.return
+          break
+        case 'tier':
+          aVal = a.tier
+          bVal = b.tier
+          break
+        case 'primaryStock':
+          aVal = a.primaryStock
+          bVal = b.primaryStock
+          break
+        case 'sector':
+          aVal = a.sector
+          bVal = b.sector
+          break
+        case 'totalValue':
+          aVal = a.totalValue || 0
+          bVal = b.totalValue || 0
+          break
+        default:
+          aVal = 0
+          bVal = 0
+      }
+      
+      // Handle string sorting
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        aVal = aVal.toLowerCase()
+        bVal = bVal.toLowerCase()
+      }
+      
+      const comparison = (aVal ?? 0) < (bVal ?? 0) ? -1 : (aVal ?? 0) > (bVal ?? 0) ? 1 : 0
+      return sortDirection === 'desc' ? -comparison : comparison
+    }).map((entry, index) => ({ ...entry, rank: index + 1 }))
+  }, [leaderboardData, filters, sortField, sortDirection])
 
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <th 
