@@ -100,28 +100,34 @@ async function fetchPolygonSnapshot(ticker: string): Promise<StockDetailData | n
     }
 
     const data = await response.json()
+    console.log(`📊 Polygon API response for ${ticker}:`, JSON.stringify(data, null, 2))
     
-    if (data.status === 'OK' && data.results && data.results.length > 0) {
-      const result = data.results[0]
-      const value = result.value || {}
-      const prevDay = result.prevDay || {}
+    if (data.status === 'OK' && data.ticker) {
+      const ticker_data = data.ticker
+      const day = ticker_data.day || {}
+      const prevDay = ticker_data.prevDay || {}
+      
+      const currentPrice = day.c || 0
+      const previousClose = prevDay.c || 0
+      const change = currentPrice - previousClose
+      const changePercent = previousClose ? (change / previousClose) * 100 : 0
       
       return {
         ticker: ticker.toUpperCase(),
         name: companyNames[ticker.toUpperCase()] || `${ticker.toUpperCase()} Inc.`,
-        price: value.c || 0,
-        change: value.c - prevDay.c || 0,
-        changePercent: ((value.c - prevDay.c) / prevDay.c) * 100 || 0,
-        volume: value.v || 0,
+        price: currentPrice,
+        change: change,
+        changePercent: changePercent,
+        volume: day.v || 0,
         marketCap: `$${(Math.random() * 1000 + 100).toFixed(1)}B`,
-        dayHigh: value.h || value.c || 0,
-        dayLow: value.l || value.c || 0,
-        open: value.o || value.c || 0,
-        previousClose: prevDay.c || 0,
+        dayHigh: day.h || currentPrice,
+        dayLow: day.l || currentPrice,
+        open: day.o || currentPrice,
+        previousClose: previousClose,
         pe: Math.random() * 30 + 10,
-        yearHigh: (value.c || 0) * (1 + Math.random() * 0.5),
-        yearLow: (value.c || 0) * (1 - Math.random() * 0.3),
-        avgVolume: (value.v || 0) * (0.8 + Math.random() * 0.4),
+        yearHigh: currentPrice * (1 + Math.random() * 0.5),
+        yearLow: currentPrice * (1 - Math.random() * 0.3),
+        avgVolume: (day.v || 0) * (0.8 + Math.random() * 0.4),
         lastUpdated: new Date().toLocaleTimeString()
       }
     }

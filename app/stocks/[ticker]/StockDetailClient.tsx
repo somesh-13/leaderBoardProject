@@ -35,6 +35,80 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<TimeRange>('1M')
+  const [fullHistoricalData, setFullHistoricalData] = useState<HistoricalDataPoint[] | null>(null)
+
+  // Function to get cached data from localStorage
+  const getCachedHistoricalData = useCallback((ticker: string): HistoricalDataPoint[] | null => {
+    try {
+      const cached = localStorage.getItem(`stock_history_${ticker.toUpperCase()}`)
+      if (cached) {
+        const data = JSON.parse(cached)
+        // Check if data is less than 1 hour old
+        if (Date.now() - data.timestamp < 60 * 60 * 1000) {
+          console.log(`📋 Using cached data for ${ticker}`)
+          return data.historicalData
+        }
+      }
+    } catch (error) {
+      console.warn('Error reading cached data:', error)
+    }
+    return null
+  }, [])
+
+  // Function to cache historical data in localStorage
+  const setCachedHistoricalData = useCallback((ticker: string, data: HistoricalDataPoint[]) => {
+    try {
+      localStorage.setItem(`stock_history_${ticker.toUpperCase()}`, JSON.stringify({
+        timestamp: Date.now(),
+        historicalData: data
+      }))
+      console.log(`💾 Cached historical data for ${ticker}`)
+    } catch (error) {
+      console.warn('Error caching data:', error)
+    }
+  }, [])
+
+  // Function to filter historical data based on time range
+  const filterHistoricalDataByTimeRange = useCallback((
+    data: HistoricalDataPoint[], 
+    timeRange: TimeRange
+  ): HistoricalDataPoint[] => {
+    if (!data || data.length === 0) return []
+    
+    const now = new Date()
+    const startDate = new Date()
+    
+    switch (timeRange) {
+      case '1D':
+        startDate.setDate(now.getDate() - 1)
+        break
+      case '5D':
+        startDate.setDate(now.getDate() - 5)
+        break
+      case '1M':
+        startDate.setMonth(now.getMonth() - 1)
+        break
+      case '3M':
+        startDate.setMonth(now.getMonth() - 3)
+        break
+      case '6M':
+        startDate.setMonth(now.getMonth() - 6)
+        break
+      case '1Y':
+        startDate.setFullYear(now.getFullYear() - 1)
+        break
+      case '2Y':
+        startDate.setFullYear(now.getFullYear() - 2)
+        break
+      case '5Y':
+        startDate.setFullYear(now.getFullYear() - 5)
+        break
+      default:
+        return data
+    }
+
+    return data.filter(point => point.timestamp >= startDate.getTime())
+  }, [])
 
   // Generate mock historical data for fallback
   const generateMockHistoricalData = useCallback((
@@ -207,6 +281,7 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
       }))
 
       console.log(`✅ Fetched ${transformedResults.length} data points from Polygon.io for ${ticker}`)
+      console.log(`📈 Latest closing price (c): $${data.results[data.results.length - 1].c} for ${ticker}`)
       return transformedResults
 
     } catch (error) {
@@ -229,13 +304,29 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
         }
         const basicData = await snapshotResponse.json()
 
-        // Fetch historical data directly from Polygon.io
-        const historicalData = await fetchHistoricalDataFromPolygon(ticker, timeRange)
+        // Check for cached historical data first
+        let historicalData = getCachedHistoricalData(ticker)
+        
+        if (!historicalData) {
+          // Fetch full historical data (5Y) only once and cache it
+          console.log(`🔄 Fetching fresh historical data for ${ticker}`)
+          historicalData = await fetchHistoricalDataFromPolygon(ticker, '5Y')
+          
+          if (historicalData) {
+            setFullHistoricalData(historicalData)
+            setCachedHistoricalData(ticker, historicalData)
+          }
+        } else {
+          setFullHistoricalData(historicalData)
+        }
+        
+        // Initially show 1M data by default
+        const filteredData = historicalData ? filterHistoricalDataByTimeRange(historicalData, '1M') : []
         
         // Combine the data
         const combinedData = {
           ...basicData,
-          historicalData: historicalData || []
+          historicalData: filteredData
         }
         
         setStockData(combinedData)
@@ -250,7 +341,18 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
     if (ticker) {
       fetchStockDetail()
     }
-  }, [ticker, timeRange, fetchHistoricalDataFromPolygon])
+  }, [ticker, getCachedHistoricalData, setCachedHistoricalData, fetchHistoricalDataFromPolygon, filterHistoricalDataByTimeRange])
+
+  // Separate effect to handle time range changes without refetching data
+  useEffect(() => {
+    if (fullHistoricalData && stockData && timeRange) {
+      const filteredData = filterHistoricalDataByTimeRange(fullHistoricalData, timeRange)
+      setStockData(prevData => prevData ? {
+        ...prevData,
+        historicalData: filteredData
+      } : null)
+    }
+  }, [timeRange, fullHistoricalData, filterHistoricalDataByTimeRange])
 
   const handleTimeRangeChange = (newTimeRange: TimeRange) => {
     setTimeRange(newTimeRange)
