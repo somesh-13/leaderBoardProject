@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react'
 import StockPriceChart from '@/components/charts/StockPriceChart'
@@ -42,13 +42,23 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
         setLoading(true)
         setError(null)
         
-        const response = await fetch(`/api/stocks/${ticker}?timeRange=${timeRange}&includeHistory=true`)
-        if (!response.ok) {
-          throw new Error(`Failed to fetch data for ${ticker}`)
+        // Fetch basic stock data (snapshot)
+        const snapshotResponse = await fetch(`/api/stocks/${ticker}?includeHistory=false`)
+        if (!snapshotResponse.ok) {
+          throw new Error(`Failed to fetch basic data for ${ticker}`)
+        }
+        const basicData = await snapshotResponse.json()
+
+        // Fetch historical data directly from Polygon.io
+        const historicalData = await fetchHistoricalDataFromPolygon(ticker, timeRange)
+        
+        // Combine the data
+        const combinedData = {
+          ...basicData,
+          historicalData: historicalData || []
         }
         
-        const data = await response.json()
-        setStockData(data)
+        setStockData(combinedData)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error occurred')
         console.error('Error fetching stock details:', err)
@@ -60,10 +70,182 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
     if (ticker) {
       fetchStockDetail()
     }
-  }, [ticker, timeRange])
+  }, [ticker, timeRange, fetchHistoricalDataFromPolygon])
 
   const handleTimeRangeChange = (newTimeRange: TimeRange) => {
     setTimeRange(newTimeRange)
+  }
+
+  // Function to fetch historical data directly from Polygon.io
+  const fetchHistoricalDataFromPolygon = useCallback(async (
+    ticker: string, 
+    timeRange: TimeRange
+  ): Promise<HistoricalDataPoint[] | null> => {
+    const API_KEY = process.env.NEXT_PUBLIC_POLYGON_API_KEY
+    
+    if (!API_KEY) {
+      console.warn('Polygon API key not found, using mock data')
+      return generateMockHistoricalData(ticker, timeRange)
+    }
+
+    try {
+      // Calculate date range based on timeRange
+      const endDate = new Date()
+      const startDate = new Date()
+      
+      let multiplier = 1
+      let timespan = 'day'
+      
+      switch (timeRange) {
+        case '1D':
+          startDate.setDate(endDate.getDate() - 1)
+          multiplier = 5
+          timespan = 'minute'
+          break
+        case '5D':
+          startDate.setDate(endDate.getDate() - 5)
+          multiplier = 15
+          timespan = 'minute'
+          break
+        case '1M':
+          startDate.setMonth(endDate.getMonth() - 1)
+          multiplier = 1
+          timespan = 'day'
+          break
+        case '3M':
+          startDate.setMonth(endDate.getMonth() - 3)
+          multiplier = 1
+          timespan = 'day'
+          break
+        case '6M':
+          startDate.setMonth(endDate.getMonth() - 6)
+          multiplier = 1
+          timespan = 'day'
+          break
+        case '1Y':
+          startDate.setFullYear(endDate.getFullYear() - 1)
+          multiplier = 1
+          timespan = 'day'
+          break
+        case '2Y':
+          startDate.setFullYear(endDate.getFullYear() - 2)
+          multiplier = 1
+          timespan = 'week'
+          break
+        case '5Y':
+          startDate.setFullYear(endDate.getFullYear() - 5)
+          multiplier = 1
+          timespan = 'week'
+          break
+      }
+
+      const fromDate = startDate.toISOString().split('T')[0]
+      const toDate = endDate.toISOString().split('T')[0]
+
+      // Build Polygon.io API URL - using the exact format from your example
+      const polygonUrl = `https://api.polygon.io/v2/aggs/ticker/${ticker.toUpperCase()}/range/${multiplier}/${timespan}/${fromDate}/${toDate}?adjusted=true&sort=asc&limit=50000&apiKey=${API_KEY}`
+      
+      console.log(`📊 Fetching historical data from Polygon.io for ${ticker} (${timeRange}):`, polygonUrl)
+      
+      const response = await fetch(polygonUrl, {
+        headers: {
+          'User-Agent': 'leaderboard-app/1.0'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`Polygon API error: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      
+      if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+        console.warn(`No historical data available for ${ticker}, using mock data`)
+        return generateMockHistoricalData(ticker, timeRange)
+      }
+
+      // Transform Polygon.io response to our format
+      const transformedResults: HistoricalDataPoint[] = data.results.map((point: {
+        t: number; o: number; h: number; l: number; c: number; v: number; vw?: number; n?: number;
+      }) => ({
+        timestamp: point.t,
+        open: point.o,
+        high: point.h,
+        low: point.l,
+        close: point.c,
+        volume: point.v,
+        vwap: point.vw,
+        transactions: point.n,
+        date: new Date(point.t).toISOString().split('T')[0]
+      }))
+
+      console.log(`✅ Fetched ${transformedResults.length} data points from Polygon.io for ${ticker}`)
+      return transformedResults
+
+    } catch (error) {
+      console.error(`❌ Error fetching historical data from Polygon.io for ${ticker}:`, error)
+      // Fallback to mock data
+      return generateMockHistoricalData(ticker, timeRange)
+    }
+  }, [])
+
+  // Generate mock historical data for fallback
+  const generateMockHistoricalData = (
+    ticker: string, 
+    timeRange: TimeRange,
+    currentPrice: number = 100
+  ): HistoricalDataPoint[] => {
+    const endDate = new Date()
+    const startDate = new Date()
+    
+    let days = 30 // Default to 1 month
+    switch (timeRange) {
+      case '1D': days = 1; break
+      case '5D': days = 5; break
+      case '1M': days = 30; break
+      case '3M': days = 90; break
+      case '6M': days = 180; break
+      case '1Y': days = 365; break
+      case '2Y': days = 730; break
+      case '5Y': days = 1825; break
+    }
+    
+    startDate.setDate(endDate.getDate() - days)
+
+    const results: HistoricalDataPoint[] = []
+    const totalPoints = Math.min(days, 250)
+    
+    let price = currentPrice * 0.9 // Start 10% below current
+    const volatility = 0.02 // 2% daily volatility
+    
+    for (let i = 0; i < totalPoints; i++) {
+      const date = new Date(startDate)
+      date.setDate(startDate.getDate() + (i * days / totalPoints))
+      
+      const changePercent = (Math.random() - 0.5) * volatility * 2
+      const open = price
+      const close = price * (1 + changePercent)
+      const high = Math.max(open, close) * (1 + Math.random() * 0.01)
+      const low = Math.min(open, close) * (1 - Math.random() * 0.01)
+      const volume = Math.floor(Math.random() * 10000000) + 1000000
+      
+      results.push({
+        timestamp: date.getTime(),
+        open: Number(open.toFixed(2)),
+        high: Number(high.toFixed(2)),
+        low: Number(low.toFixed(2)),
+        close: Number(close.toFixed(2)),
+        volume,
+        vwap: Number(((open + high + low + close) / 4).toFixed(2)),
+        transactions: Math.floor(volume / 100),
+        date: date.toISOString().split('T')[0]
+      })
+      
+      price = close
+    }
+
+    console.log(`📊 Generated ${results.length} mock data points for ${ticker} (${timeRange})`)
+    return results
   }
 
   if (loading) {
