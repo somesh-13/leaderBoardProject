@@ -36,45 +36,64 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<TimeRange>('1M')
 
-  useEffect(() => {
-    const fetchStockDetail = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        // Fetch basic stock data (snapshot)
-        const snapshotResponse = await fetch(`/api/stocks/${ticker}?includeHistory=false`)
-        if (!snapshotResponse.ok) {
-          throw new Error(`Failed to fetch basic data for ${ticker}`)
-        }
-        const basicData = await snapshotResponse.json()
+  // Generate mock historical data for fallback
+  const generateMockHistoricalData = useCallback((
+    ticker: string, 
+    timeRange: TimeRange,
+    currentPrice: number = 100
+  ): HistoricalDataPoint[] => {
+    const endDate = new Date()
+    const startDate = new Date()
+    
+    let days = 30 // Default to 1 month
+    switch (timeRange) {
+      case '1D': days = 1; break
+      case '5D': days = 5; break
+      case '1M': days = 30; break
+      case '3M': days = 90; break
+      case '6M': days = 180; break
+      case '1Y': days = 365; break
+      case '2Y': days = 730; break
+      case '5Y': days = 1825; break
+    }
+    
+    startDate.setDate(endDate.getDate() - days)
 
-        // Fetch historical data directly from Polygon.io
-        const historicalData = await fetchHistoricalDataFromPolygon(ticker, timeRange)
-        
-        // Combine the data
-        const combinedData = {
-          ...basicData,
-          historicalData: historicalData || []
-        }
-        
-        setStockData(combinedData)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error occurred')
-        console.error('Error fetching stock details:', err)
-      } finally {
-        setLoading(false)
-      }
+    const results: HistoricalDataPoint[] = []
+    const totalPoints = Math.min(days, 250)
+    
+    let price = currentPrice * 0.9 // Start 10% below current
+    const volatility = 0.02 // 2% daily volatility
+    
+    for (let i = 0; i < totalPoints; i++) {
+      const date = new Date(startDate)
+      date.setDate(startDate.getDate() + (i * days / totalPoints))
+      
+      const changePercent = (Math.random() - 0.5) * volatility * 2
+      const open = price
+      const close = price * (1 + changePercent)
+      const high = Math.max(open, close) * (1 + Math.random() * 0.01)
+      const low = Math.min(open, close) * (1 - Math.random() * 0.01)
+      const volume = Math.floor(Math.random() * 10000000) + 1000000
+      
+      results.push({
+        timestamp: date.getTime(),
+        open: Number(open.toFixed(2)),
+        high: Number(high.toFixed(2)),
+        low: Number(low.toFixed(2)),
+        close: Number(close.toFixed(2)),
+        volume,
+        vwap: Number(((open + high + low + close) / 4).toFixed(2)),
+        transactions: Math.floor(volume / 100),
+        date: date.toISOString().split('T')[0]
+      })
+      
+      price = close
     }
 
-    if (ticker) {
-      fetchStockDetail()
-    }
-  }, [ticker, timeRange, fetchHistoricalDataFromPolygon])
-
-  const handleTimeRangeChange = (newTimeRange: TimeRange) => {
-    setTimeRange(newTimeRange)
-  }
+    console.log(`📊 Generated ${results.length} mock data points for ${ticker} (${timeRange})`)
+    return results
+  }, [])
 
   // Function to fetch historical data directly from Polygon.io
   const fetchHistoricalDataFromPolygon = useCallback(async (
@@ -187,65 +206,46 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
       // Fallback to mock data
       return generateMockHistoricalData(ticker, timeRange)
     }
-  }, [])
+  }, [generateMockHistoricalData])
 
-  // Generate mock historical data for fallback
-  const generateMockHistoricalData = (
-    ticker: string, 
-    timeRange: TimeRange,
-    currentPrice: number = 100
-  ): HistoricalDataPoint[] => {
-    const endDate = new Date()
-    const startDate = new Date()
-    
-    let days = 30 // Default to 1 month
-    switch (timeRange) {
-      case '1D': days = 1; break
-      case '5D': days = 5; break
-      case '1M': days = 30; break
-      case '3M': days = 90; break
-      case '6M': days = 180; break
-      case '1Y': days = 365; break
-      case '2Y': days = 730; break
-      case '5Y': days = 1825; break
-    }
-    
-    startDate.setDate(endDate.getDate() - days)
+  useEffect(() => {
+    const fetchStockDetail = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        // Fetch basic stock data (snapshot)
+        const snapshotResponse = await fetch(`/api/stocks/${ticker}?includeHistory=false`)
+        if (!snapshotResponse.ok) {
+          throw new Error(`Failed to fetch basic data for ${ticker}`)
+        }
+        const basicData = await snapshotResponse.json()
 
-    const results: HistoricalDataPoint[] = []
-    const totalPoints = Math.min(days, 250)
-    
-    let price = currentPrice * 0.9 // Start 10% below current
-    const volatility = 0.02 // 2% daily volatility
-    
-    for (let i = 0; i < totalPoints; i++) {
-      const date = new Date(startDate)
-      date.setDate(startDate.getDate() + (i * days / totalPoints))
-      
-      const changePercent = (Math.random() - 0.5) * volatility * 2
-      const open = price
-      const close = price * (1 + changePercent)
-      const high = Math.max(open, close) * (1 + Math.random() * 0.01)
-      const low = Math.min(open, close) * (1 - Math.random() * 0.01)
-      const volume = Math.floor(Math.random() * 10000000) + 1000000
-      
-      results.push({
-        timestamp: date.getTime(),
-        open: Number(open.toFixed(2)),
-        high: Number(high.toFixed(2)),
-        low: Number(low.toFixed(2)),
-        close: Number(close.toFixed(2)),
-        volume,
-        vwap: Number(((open + high + low + close) / 4).toFixed(2)),
-        transactions: Math.floor(volume / 100),
-        date: date.toISOString().split('T')[0]
-      })
-      
-      price = close
+        // Fetch historical data directly from Polygon.io
+        const historicalData = await fetchHistoricalDataFromPolygon(ticker, timeRange)
+        
+        // Combine the data
+        const combinedData = {
+          ...basicData,
+          historicalData: historicalData || []
+        }
+        
+        setStockData(combinedData)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error occurred')
+        console.error('Error fetching stock details:', err)
+      } finally {
+        setLoading(false)
+      }
     }
 
-    console.log(`📊 Generated ${results.length} mock data points for ${ticker} (${timeRange})`)
-    return results
+    if (ticker) {
+      fetchStockDetail()
+    }
+  }, [ticker, timeRange, fetchHistoricalDataFromPolygon])
+
+  const handleTimeRangeChange = (newTimeRange: TimeRange) => {
+    setTimeRange(newTimeRange)
   }
 
   if (loading) {
