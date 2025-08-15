@@ -27,7 +27,7 @@ export const INITIAL_PORTFOLIOS: Record<string, Portfolio> = {
     totalReturnPercent: 127.5,
     dayChange: 345.60,
     dayChangePercent: 1.54,
-    tier: 'S' as const,
+    tier: calculateTier(127.5),
     sector: 'Aerospace',
     primaryStock: 'RKLB',
     lastCalculated: Date.now()
@@ -53,7 +53,7 @@ export const INITIAL_PORTFOLIOS: Record<string, Portfolio> = {
     totalReturnPercent: 189.5,
     dayChange: -234.50,
     dayChangePercent: -0.81,
-    tier: 'S' as const,
+    tier: calculateTier(189.5),
     sector: 'Technology',
     primaryStock: 'PLTR',
     lastCalculated: Date.now()
@@ -79,7 +79,7 @@ export const INITIAL_PORTFOLIOS: Record<string, Portfolio> = {
     totalReturnPercent: 212.0,
     dayChange: 156.75,
     dayChangePercent: 0.50,
-    tier: 'S' as const,
+    tier: calculateTier(212.0),
     sector: 'Technology',
     primaryStock: 'META',
     lastCalculated: Date.now()
@@ -105,7 +105,7 @@ export const INITIAL_PORTFOLIOS: Record<string, Portfolio> = {
     totalReturnPercent: 164.8,
     dayChange: 387.20,
     dayChangePercent: 1.48,
-    tier: 'S' as const,
+    tier: calculateTier(164.8),
     sector: 'Technology',
     primaryStock: 'NVDA',
     lastCalculated: Date.now()
@@ -131,7 +131,7 @@ export const INITIAL_PORTFOLIOS: Record<string, Portfolio> = {
     totalReturnPercent: 153.5,
     dayChange: 289.45,
     dayChangePercent: 1.15,
-    tier: 'S' as const,
+    tier: calculateTier(153.5),
     sector: 'Technology',
     primaryStock: 'UNH',
     lastCalculated: Date.now()
