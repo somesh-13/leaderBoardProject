@@ -291,18 +291,132 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
     }
   }, [generateMockHistoricalData])
 
+  // Function to fetch snapshot data directly from Polygon.io
+  const fetchPolygonSnapshotDirect = useCallback(async (ticker: string) => {
+    const API_KEY = process.env.NEXT_PUBLIC_POLYGON_API_KEY
+    
+    if (!API_KEY) {
+      throw new Error('Polygon API key not found')
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}?apikey=${API_KEY}`,
+        {
+          headers: {
+            'User-Agent': 'leaderboard-app/1.0'
+          }
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      console.log(`📊 Direct Polygon API response for ${ticker}:`, JSON.stringify(data, null, 2))
+      
+      if (data.status === 'OK' && data.ticker) {
+        const ticker_data = data.ticker
+        const day = ticker_data.day || {}
+        const prevDay = ticker_data.prevDay || {}
+        
+        const currentPrice = day.c || 0
+        const previousClose = prevDay.c || 0
+        const change = currentPrice - previousClose
+        const changePercent = previousClose ? (change / previousClose) * 100 : 0
+        
+        // Mock company names for common tickers
+        const companyNames: Record<string, string> = {
+          AAPL: 'Apple Inc.',
+          TSLA: 'Tesla, Inc.',
+          MSFT: 'Microsoft Corporation',
+          GOOGL: 'Alphabet Inc.',
+          AMZN: 'Amazon.com, Inc.',
+          META: 'Meta Platforms, Inc.',
+          NVDA: 'NVIDIA Corporation',
+          PLTR: 'Palantir Technologies Inc.',
+          RKLB: 'Rocket Lab USA, Inc.',
+          HOOD: 'Robinhood Markets, Inc.',
+          SOFI: 'SoFi Technologies, Inc.',
+          JPM: 'JPMorgan Chase & Co.',
+          UNH: 'UnitedHealth Group Incorporated',
+          MSTR: 'MicroStrategy Incorporated',
+          HIMS: 'Hims & Hers Health, Inc.',
+          NOW: 'ServiceNow, Inc.',
+          MELI: 'MercadoLibre, Inc.',
+          SHOP: 'Shopify Inc.',
+          TTD: 'The Trade Desk, Inc.',
+          ASML: 'ASML Holding N.V.',
+          APP: 'AppLovin Corporation',
+          COIN: 'Coinbase Global, Inc.',
+          TSM: 'Taiwan Semiconductor Manufacturing Company Limited',
+          MRVL: 'Marvell Technology, Inc.',
+          AXON: 'Axon Enterprise, Inc.',
+          ELF: 'e.l.f. Beauty, Inc.',
+          ORCL: 'Oracle Corporation',
+          CSCO: 'Cisco Systems, Inc.',
+          LLY: 'Eli Lilly and Company',
+          NVO: 'Novo Nordisk A/S',
+          TTWO: 'Take-Two Interactive Software, Inc.',
+          ASTS: 'AST SpaceMobile, Inc.',
+          'BRK.B': 'Berkshire Hathaway Inc.',
+          CELH: 'Celsius Holdings, Inc.',
+          OSCR: 'Oscar Health, Inc.',
+          EOG: 'EOG Resources, Inc.',
+          BROS: 'Dutch Bros Inc.',
+          ABCL: 'AbCellera Biologics Inc.',
+          AMD: 'Advanced Micro Devices, Inc.',
+          NBIS: 'Nebius Group N.V.',
+          GRAB: 'Grab Holdings Limited',
+          V: 'Visa Inc.',
+          DUOL: 'Duolingo, Inc.',
+          AVGO: 'Broadcom Inc.',
+          CRWD: 'CrowdStrike Holdings, Inc.',
+          NFLX: 'Netflix, Inc.',
+          CRM: 'Salesforce, Inc.',
+          PYPL: 'PayPal Holdings, Inc.',
+          MU: 'Micron Technology, Inc.',
+          NU: 'Nu Holdings Ltd.',
+          SPY: 'SPDR S&P 500 ETF Trust',
+          QQQ: 'Invesco QQQ Trust'
+        }
+        
+        return {
+          ticker: ticker.toUpperCase(),
+          name: companyNames[ticker.toUpperCase()] || `${ticker.toUpperCase()} Inc.`,
+          price: currentPrice,
+          change: change,
+          changePercent: changePercent,
+          volume: day.v || 0,
+          marketCap: `$${(Math.random() * 1000 + 100).toFixed(1)}B`,
+          dayHigh: day.h || currentPrice,
+          dayLow: day.l || currentPrice,
+          open: day.o || currentPrice,
+          previousClose: previousClose,
+          pe: Math.random() * 30 + 10,
+          yearHigh: currentPrice * (1 + Math.random() * 0.5),
+          yearLow: currentPrice * (1 - Math.random() * 0.3),
+          avgVolume: (day.v || 0) * (0.8 + Math.random() * 0.4),
+          lastUpdated: new Date().toLocaleTimeString()
+        }
+      }
+      
+      throw new Error(`Invalid response from Polygon API: ${data.status}`)
+    } catch (error) {
+      console.error('Error fetching snapshot from Polygon API:', error)
+      throw error
+    }
+  }, [])
+
   useEffect(() => {
     const fetchStockDetail = async () => {
       try {
         setLoading(true)
         setError(null)
         
-        // Fetch basic stock data (snapshot)
-        const snapshotResponse = await fetch(`/api/stocks/${ticker}?includeHistory=false`)
-        if (!snapshotResponse.ok) {
-          throw new Error(`Failed to fetch basic data for ${ticker}`)
-        }
-        const basicData = await snapshotResponse.json()
+        // Fetch basic stock data directly from Polygon.io
+        const basicData = await fetchPolygonSnapshotDirect(ticker)
 
         // Check for cached historical data first
         let historicalData = getCachedHistoricalData(ticker)
@@ -341,7 +455,7 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
     if (ticker) {
       fetchStockDetail()
     }
-  }, [ticker, getCachedHistoricalData, setCachedHistoricalData, fetchHistoricalDataFromPolygon, filterHistoricalDataByTimeRange])
+  }, [ticker, getCachedHistoricalData, setCachedHistoricalData, fetchHistoricalDataFromPolygon, filterHistoricalDataByTimeRange, fetchPolygonSnapshotDirect])
 
   // Separate effect to handle time range changes without refetching data
   useEffect(() => {
