@@ -29,6 +29,30 @@ export interface HistoricalPriceResponse {
 
 export type TimeRange = '1D' | '5D' | '1M' | '3M' | '6M' | '1Y' | '2Y' | '5Y'
 
+// Exact Polygon.io API response structure
+export interface PolygonAggregateResult {
+  v: number    // Volume
+  vw: number   // Volume weighted average price
+  o: number    // Open
+  c: number    // Close
+  h: number    // High
+  l: number    // Low
+  t: number    // Timestamp (Unix ms)
+  n: number    // Number of transactions
+}
+
+export interface PolygonAggregatesResponse {
+  ticker: string
+  queryCount: number
+  resultsCount: number
+  adjusted: boolean
+  results: PolygonAggregateResult[]
+  status: string
+  request_id?: string
+  count?: number
+  next_url?: string
+}
+
 interface TimeRangeConfig {
   days: number
   multiplier: number
@@ -91,15 +115,23 @@ export class HistoricalPriceService {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
 
-      const data = await response.json()
+      const data: PolygonAggregatesResponse = await response.json()
       
-      if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+      // Accept both "OK" and "DELAYED" status as valid responses
+      if ((data.status !== 'OK' && data.status !== 'DELAYED') || !data.results || data.results.length === 0) {
         throw new Error(`No data available for ${ticker}`)
       }
 
-      // Transform the data to include formatted dates
+      // Transform the data to include formatted dates based on exact API structure
       const transformedResults: HistoricalDataPoint[] = data.results.map((point: {
-        t: number; o: number; h: number; l: number; c: number; v: number; vw?: number; n?: number;
+        v: number;    // Volume
+        vw: number;   // Volume weighted average price
+        o: number;    // Open
+        c: number;    // Close
+        h: number;    // High
+        l: number;    // Low
+        t: number;    // Timestamp (Unix ms)
+        n: number;    // Number of transactions
       }) => ({
         timestamp: point.t,
         open: point.o,
@@ -162,15 +194,23 @@ export class HistoricalPriceService {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
 
-      const data = await response.json()
+      const data: PolygonAggregatesResponse = await response.json()
       
-      if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+      // Accept both "OK" and "DELAYED" status as valid responses  
+      if ((data.status !== 'OK' && data.status !== 'DELAYED') || !data.results || data.results.length === 0) {
         throw new Error(`No data available for ${ticker} in range ${fromDate} to ${toDate}`)
       }
 
-      // Transform the data to include formatted dates
+      // Transform the data to include formatted dates based on exact API structure
       const transformedResults: HistoricalDataPoint[] = data.results.map((point: {
-        t: number; o: number; h: number; l: number; c: number; v: number; vw?: number; n?: number;
+        v: number;    // Volume
+        vw: number;   // Volume weighted average price
+        o: number;    // Open
+        c: number;    // Close
+        h: number;    // High
+        l: number;    // Low
+        t: number;    // Timestamp (Unix ms)
+        n: number;    // Number of transactions
       }) => ({
         timestamp: point.t,
         open: point.o,

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react'
 import StockPriceChart from '@/components/charts/StockPriceChart'
-import type { HistoricalDataPoint, TimeRange } from '@/lib/services/historicalPriceService'
+import type { HistoricalDataPoint, TimeRange, PolygonAggregatesResponse } from '@/lib/services/historicalPriceService'
 
 interface StockDetailData {
   ticker: string
@@ -176,16 +176,24 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
         throw new Error(`Polygon API error: ${response.status} ${response.statusText}`)
       }
 
-      const data = await response.json()
+      const data: PolygonAggregatesResponse = await response.json()
       
-      if (data.status !== 'OK' || !data.results || data.results.length === 0) {
-        console.warn(`No historical data available for ${ticker}, using mock data`)
+      // Accept both "OK" and "DELAYED" status as per your API response example
+      if ((data.status !== 'OK' && data.status !== 'DELAYED') || !data.results || data.results.length === 0) {
+        console.warn(`No historical data available for ${ticker} (status: ${data.status}), using mock data`)
         return generateMockHistoricalData(ticker, timeRange)
       }
 
-      // Transform Polygon.io response to our format
+      // Transform Polygon.io response to our format based on exact API structure
       const transformedResults: HistoricalDataPoint[] = data.results.map((point: {
-        t: number; o: number; h: number; l: number; c: number; v: number; vw?: number; n?: number;
+        v: number;    // Volume
+        vw: number;   // Volume weighted average price
+        o: number;    // Open
+        c: number;    // Close
+        h: number;    // High
+        l: number;    // Low
+        t: number;    // Timestamp (Unix ms)
+        n: number;    // Number of transactions
       }) => ({
         timestamp: point.t,
         open: point.o,
