@@ -495,8 +495,43 @@ export const usePortfolioStore = create<PortfolioStore>()(
           console.log('🔍 getSortedLeaderboard - Filtered leaderboard length:', filtered.length)
           
           return [...filtered].sort((a, b) => {
-            let aVal = a[sortField]
-            let bVal = b[sortField]
+            let aVal: any
+            let bVal: any
+            
+            // Safe property access with proper mapping
+            switch (sortField) {
+              case 'rank':
+                aVal = a.rank
+                bVal = b.rank
+                break
+              case 'username':
+                aVal = a.username
+                bVal = b.username
+                break
+              case 'return':
+                aVal = a.calculatedReturn !== undefined ? a.calculatedReturn : a.return
+                bVal = b.calculatedReturn !== undefined ? b.calculatedReturn : b.return
+                break
+              case 'tier':
+                aVal = a.tier
+                bVal = b.tier
+                break
+              case 'primaryStock':
+                aVal = a.primaryStock
+                bVal = b.primaryStock
+                break
+              case 'sector':
+                aVal = a.sector
+                bVal = b.sector
+                break
+              case 'totalValue':
+                aVal = a.totalValue
+                bVal = b.totalValue
+                break
+              default:
+                aVal = 0
+                bVal = 0
+            }
             
             // Handle string sorting
             if (typeof aVal === 'string' && typeof bVal === 'string') {
