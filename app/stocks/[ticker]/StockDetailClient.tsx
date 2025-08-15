@@ -345,7 +345,7 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
 
   // Separate effect to handle time range changes without refetching data
   useEffect(() => {
-    if (fullHistoricalData && stockData && timeRange) {
+    if (fullHistoricalData && timeRange) {
       const filteredData = filterHistoricalDataByTimeRange(fullHistoricalData, timeRange)
       setStockData(prevData => prevData ? {
         ...prevData,
