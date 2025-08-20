@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { INITIAL_PORTFOLIOS } from '@/lib/data/initialPortfolios';
 import { priceService } from '@/lib/services/priceService';
+import { calculateTier } from '@/lib/utils/portfolioCalculations';
 import { 
   PortfolioSnapshot, 
   Position, 
@@ -28,11 +29,12 @@ interface PortfolioSnapshotResponse extends PortfolioSnapshot {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { username: string } }
+  { params }: { params: Promise<{ username: string }> }
 ) {
   try {
     const { searchParams } = new URL(request.url);
-    const username = params.username?.toLowerCase();
+    const resolvedParams = await params;
+    const username = resolvedParams.username?.toLowerCase();
     const atDate = searchParams.get('at'); // YYYY-MM-DD format
     
     if (!username) {
@@ -77,7 +79,7 @@ export async function GET(
 
         return {
           symbol: pos.symbol,
-          sector: pos.sector,
+          sector: pos.sector || 'Unknown',
           shares: pos.shares,
           avgPrice: pos.avgPrice,
           currentPrice,
@@ -140,6 +142,7 @@ export async function GET(
       dayChangeValue: totalDayChangeValue,
       primarySector,
       lastUpdated: new Date().toISOString(),
+      tier: calculateTier(totalReturnPct),
       positions,
       sectorAllocations
     };

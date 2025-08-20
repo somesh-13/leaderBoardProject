@@ -181,7 +181,7 @@ async function computeLeaderboardEntry(username: string, period: Period): Promis
 
         return {
           symbol: pos.symbol,
-          sector: pos.sector,
+          sector: pos.sector || 'Other',
           shares: pos.shares,
           avgPrice: pos.avgPrice,
           currentPrice,

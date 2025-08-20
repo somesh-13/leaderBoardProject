@@ -141,7 +141,7 @@ export function getSnapshotErrors(snapshots: PolygonSnapshot[]): Array<{ticker: 
     .map(s => ({
       ticker: s.ticker,
       error: s.error!,
-      message: s.message
+      ...(s.message ? { message: s.message } : {})
     }))
 }
 
@@ -164,7 +164,7 @@ export async function getCurrentPrice(symbol: string): Promise<{ price: number; 
   try {
     const snapshots = await fetchPolygonSnapshots([symbol], apiKey)
     
-    if (snapshots.length === 0 || snapshots[0].error) {
+    if (snapshots.length === 0 || snapshots[0]?.error) {
       console.warn(`⚠️ No data available for ${symbol}`)
       // Return mock data as fallback
       return {
@@ -174,8 +174,8 @@ export async function getCurrentPrice(symbol: string): Promise<{ price: number; 
     }
 
     const snapshot = snapshots[0]
-    const price = snapshot.session?.price || snapshot.session?.close || 0
-    const change = snapshot.session?.change_percent || 0
+    const price = snapshot?.session?.price || snapshot?.session?.close || 0
+    const change = snapshot?.session?.change_percent || 0
 
     return {
       price,

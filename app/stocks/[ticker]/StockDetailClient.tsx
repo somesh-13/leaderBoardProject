@@ -159,7 +159,7 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
         volume,
         vwap: Number(((open + high + low + close) / 4).toFixed(2)),
         transactions: Math.floor(volume / 100),
-        date: date.toISOString().split('T')[0]
+        date: date.toISOString().split('T')[0]!
       })
       
       price = close
@@ -277,11 +277,11 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
         volume: point.v,
         vwap: point.vw,
         transactions: point.n,
-        date: new Date(point.t).toISOString().split('T')[0]
+        date: new Date(point.t).toISOString().split('T')[0]!
       }))
 
       console.log(`✅ Fetched ${transformedResults.length} data points from Polygon.io for ${ticker}`)
-      console.log(`📈 Latest closing price (c): $${data.results[data.results.length - 1].c} for ${ticker}`)
+      console.log(`📈 Latest closing price (c): $${data.results[data.results.length - 1]?.c} for ${ticker}`)
       return transformedResults
 
     } catch (error) {

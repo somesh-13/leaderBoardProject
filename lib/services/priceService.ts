@@ -208,6 +208,11 @@ class PriceService {
     if (data.status !== 'OK' && data.status !== 'DELAYED') {
       throw new Error(`Invalid response status: ${data.status}`);
     }
+    
+    // Log delayed data warning but continue processing
+    if (data.status === 'DELAYED') {
+      console.log(`⏰ Using delayed current price for ${symbol}`);
+    }
 
     if (!data.results || data.results.p <= 0) {
       throw new Error('Invalid price data received');
@@ -239,8 +244,13 @@ class PriceService {
 
     const data: PolygonAggResponse = await response.json();
     
-    if (data.status !== 'OK') {
+    if (data.status !== 'OK' && data.status !== 'DELAYED') {
       throw new Error(`Invalid response status: ${data.status}`);
+    }
+    
+    // Log delayed data warning but continue processing
+    if (data.status === 'DELAYED') {
+      console.log(`⏰ Using delayed data for ${symbol} on ${date}`);
     }
 
     if (!data.results || data.results.length === 0 || data.results[0].c <= 0) {
@@ -274,8 +284,13 @@ class PriceService {
 
     const data: PolygonAggResponse = await response.json();
     
-    if (data.status !== 'OK' || !data.results) {
+    if (data.status !== 'OK' && data.status !== 'DELAYED' || !data.results) {
       return [];
+    }
+    
+    // Log delayed data warning but continue processing
+    if (data.status === 'DELAYED') {
+      console.log(`⏰ Using delayed historical data for ${symbol}`);
     }
 
     return data.results.map(result => ({

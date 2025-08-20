@@ -63,8 +63,8 @@ export default function StockPriceChart({
   }, [data])
 
   // Determine if the stock is up or down
-  const firstPrice = data.length > 0 ? data[0].close : 0
-  const lastPrice = data.length > 0 ? data[data.length - 1].close : 0
+  const firstPrice = data.length > 0 ? data[0]?.close ?? 0 : 0
+  const lastPrice = data.length > 0 ? data[data.length - 1]?.close ?? 0 : 0
   const isPositive = lastPrice >= firstPrice
   const changePercent = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice) * 100 : 0
 
@@ -114,7 +114,7 @@ export default function StockPriceChart({
         displayColors: false,
         callbacks: {
           title: (tooltipItems: TooltipItem<'line'>[]) => {
-            const date = new Date(tooltipItems[0].parsed.x)
+            const date = new Date(tooltipItems[0]?.parsed.x ?? 0)
             return date.toLocaleDateString('en-US', {
               weekday: 'short',
               year: 'numeric',

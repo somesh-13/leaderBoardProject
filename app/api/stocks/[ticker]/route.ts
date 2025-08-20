@@ -167,9 +167,10 @@ function generateMockStockData(ticker: string): StockDetailData {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { ticker: string } }
+  { params }: { params: Promise<{ ticker: string }> }
 ) {
-  const ticker = params.ticker.toUpperCase()
+  const resolvedParams = await params;
+  const ticker = resolvedParams.ticker.toUpperCase()
   const { searchParams } = new URL(request.url)
   const timeRange = (searchParams.get('timeRange') as TimeRange) || '1M'
   const includeHistory = searchParams.get('includeHistory') !== 'false'

@@ -177,7 +177,7 @@ export function useSymbolPrices(symbols: string[], intervalMs: number = 60000) {
  */
 export function useFetchPricesOnce(symbols?: string[]) {
   return useLivePrices({
-    symbols,
+    ...(symbols && { symbols }),
     fetchOnMount: true,
     enablePolling: false
   })

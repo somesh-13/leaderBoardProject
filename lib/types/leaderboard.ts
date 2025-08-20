@@ -33,6 +33,7 @@ export interface PortfolioSnapshot {
   dayChangeValue: number;
   primarySector: string;
   lastUpdated: string; // ISO string
+  tier?: string; // Optional tier classification based on performance
 }
 
 export interface Position {

@@ -13,6 +13,7 @@
 
 import ProfilePageClient from './ProfilePageClient'
 
-export default function ProfilePage({ params }: { params: { username: string } }) {
-  return <ProfilePageClient username={params.username} />
+export default async function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
+  const resolvedParams = await params;
+  return <ProfilePageClient username={resolvedParams.username} />
 }

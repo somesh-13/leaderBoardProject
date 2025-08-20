@@ -116,7 +116,7 @@ export function usePortfolioStockPrices(portfolioSymbols: Record<string, string[
   Object.entries(portfolioSymbols).forEach(([portfolioId, symbols]) => {
     portfolioData[portfolioId] = {}
     symbols.forEach(symbol => {
-      if (data[symbol]) {
+      if (data[symbol] && portfolioData[portfolioId]) {
         portfolioData[portfolioId][symbol] = data[symbol]
       }
     })

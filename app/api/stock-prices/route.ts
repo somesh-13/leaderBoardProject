@@ -126,6 +126,8 @@ async function batchFetchStocks(symbols: string[]): Promise<StockPriceResponse> 
       
       batchResults.forEach((result, index) => {
         const symbol = uncachedSymbols[index]
+        if (!symbol) return // Skip if symbol is undefined
+        
         if (result.status === 'fulfilled' && result.value !== null) {
           results[symbol] = result.value
           console.log(`✅ Successfully got REAL data for ${symbol}`)

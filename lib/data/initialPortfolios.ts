@@ -170,7 +170,7 @@ export function generateInitialPortfolio(
     dayChangePercent: (Math.random() - 0.5) * 4,
     tier: calculateTier(targetReturn),
     sector: getMostCommonSector(positions),
-    primaryStock: positions[0].symbol,
+    primaryStock: positions[0]?.symbol || 'UNKNOWN',
     lastCalculated: Date.now()
   }
 }
@@ -217,7 +217,7 @@ function getMostCommonSector(positions: { sector: string }[]): string {
   }, {} as Record<string, number>)
   
   return Object.entries(sectorCount)
-    .sort(([,a], [,b]) => b - a)[0][0]
+    .sort(([,a], [,b]) => b - a)[0]?.[0] || 'Technology'
 }
 
 function calculateTier(returnPercent: number): 'S' | 'A' | 'B' | 'C' {

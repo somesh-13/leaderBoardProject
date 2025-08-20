@@ -15,7 +15,7 @@ import {
   ChartEvent,
   ActiveElement,
 } from 'chart.js';
-import { getCurrentPrice } from '@/lib/polygon';
+// Use BFF API instead of direct polygon import
 
 ChartJS.register(
   CategoryScale,
@@ -109,8 +109,17 @@ export default function PortfolioPerformanceChart({ user, className = "" }: Port
       // Fetch current prices
       const currentPricesData = await Promise.all(
         user.portfolio.map(async (symbol) => {
-          const { price } = await getCurrentPrice(symbol);
-          return { symbol, price };
+          try {
+            const response = await fetch(`/api/polygon/snapshot?ticker=${symbol}`);
+            if (response.ok) {
+              const data = await response.json();
+              return { symbol, price: data.price };
+            }
+            return { symbol, price: 100 }; // Fallback price
+          } catch (error) {
+            console.error(`Error fetching price for ${symbol}:`, error);
+            return { symbol, price: 100 }; // Fallback price
+          }
         })
       );
 
@@ -153,8 +162,8 @@ export default function PortfolioPerformanceChart({ user, className = "" }: Port
 
       // Generate more realistic chart data points for smoother interaction
       const chartPoints: ChartDataPoint[] = [];
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+      const start = new Date(startDate || new Date());
+      const end = new Date(endDate || new Date());
       const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
       const pointCount = Math.min(Math.max(daysDiff, 10), 50); // Between 10-50 points
 
@@ -171,7 +180,7 @@ export default function PortfolioPerformanceChart({ user, className = "" }: Port
         const pointReturnPct = totalHistoricalValue > 0 ? ((pointValue - totalHistoricalValue) / totalHistoricalValue) * 100 : 0;
         
         chartPoints.push({
-          date: pointDate.toISOString().split('T')[0],
+          date: pointDate.toISOString().split('T')[0]!,
           value: pointValue,
           returnPct: pointReturnPct
         });
@@ -235,8 +244,8 @@ export default function PortfolioPerformanceChart({ user, className = "" }: Port
     maintainAspectRatio: false,
     onHover: (event: ChartEvent, elements: ActiveElement[]) => {
       if (elements.length > 0) {
-        const dataIndex = elements[0].index;
-        setHoveredIndex(dataIndex);
+        const dataIndex = elements[0]?.index;
+        setHoveredIndex(dataIndex ?? null);
       } else {
         setHoveredIndex(null);
       }
@@ -256,8 +265,8 @@ export default function PortfolioPerformanceChart({ user, className = "" }: Port
         displayColors: false,
         callbacks: {
           title: (context: { dataIndex: number }[]) => {
-            const dataIndex = context[0].dataIndex;
-            const point = chartData[dataIndex];
+            const dataIndex = context[0]?.dataIndex;
+            const point = dataIndex !== undefined ? chartData[dataIndex] : null;
             if (point) {
               return new Date(point.date).toLocaleDateString();
             }
@@ -363,7 +372,7 @@ export default function PortfolioPerformanceChart({ user, className = "" }: Port
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400">
           {hoveredIndex !== null ? (
-            <>Portfolio value on {new Date(displayValues.date).toLocaleDateString()}</>
+            <>Portfolio value on {new Date(displayValues.date || new Date()).toLocaleDateString()}</>
           ) : (
             <>Portfolio performance since {getDateRange(timeRange, customStartDate).startDate}</>
           )}

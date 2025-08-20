@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { getCurrentPrice } from '@/lib/polygon'
+// Use BFF API instead of direct polygon import
 import { TrendingUp, TrendingDown, Search } from 'lucide-react'
 import StockLink from '@/components/navigation/StockLink'
 
@@ -44,22 +44,45 @@ export default function Screener() {
       setIsLoading(true)
       
       try {
-        const updatedAssets = await Promise.all(
-          trendingTickers.map(async (ticker) => {
-            const { price, change } = await getCurrentPrice(ticker.symbol)
-            return {
-              ...ticker,
-              price,
-              change,
-              changePercent: change, // getCurrentPrice returns change as percentage
-              volume: Math.floor(Math.random() * 10000000), // Mock volume for now
-              marketCap: `$${(Math.random() * 1000 + 100).toFixed(1)}B`
-            }
-          })
-        )
-        setAssets(updatedAssets)
+        // Use existing stock-prices API with trending tickers
+        const symbols = trendingTickers.map(ticker => ticker.symbol)
+        const response = await fetch('/api/stock-prices', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ symbols })
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.data) {
+            // Transform the API response to match ScreenerAsset interface
+            const transformedAssets: ScreenerAsset[] = Object.entries(data.data).map(([symbol, stockData]) => {
+              const tickerInfo = trendingTickers.find(t => t.symbol === symbol)
+              const stock = stockData as { price: number; change: number; changePercent: number; volume?: number }
+              return {
+                name: tickerInfo?.name || symbol,
+                symbol: symbol,
+                price: stock.price,
+                change: stock.change,
+                changePercent: stock.changePercent,
+                volume: stock.volume || 0,
+                marketCap: `$${(Math.random() * 1000 + 100).toFixed(1)}B`, // Mock market cap for now
+                sector: tickerInfo?.sector || 'Unknown',
+                type: tickerInfo?.type || 'Stock'
+              }
+            })
+            setAssets(transformedAssets)
+          } else {
+            throw new Error('Invalid API response format')
+          }
+        } else {
+          throw new Error('Failed to fetch screener data')
+        }
       } catch (error) {
         console.error('Error fetching screener data:', error)
+        setAssets([]) // Set empty array on error to prevent UI breaking
       } finally {
         setIsLoading(false)
       }

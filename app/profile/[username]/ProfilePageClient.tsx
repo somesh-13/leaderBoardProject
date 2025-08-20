@@ -1,13 +1,10 @@
 'use client'
 
 import { useMemo } from 'react'
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, TrendingUp, TrendingDown, Target, Calendar, Briefcase } from 'lucide-react'
-import { useUserPortfolio, useInitializeDemoData } from '@/lib/hooks/usePortfolioData'
-import { useStocks, usePortfolioStore } from '@/lib/store/portfolioStore'
+import { usePortfolioSnapshotAPI } from '@/lib/hooks/useApiData'
 import { formatCurrency, formatPercentage } from '@/lib/utils/portfolioCalculations'
-import { useSymbolPrices } from '@/lib/hooks/useLivePrices'
 import StockLink from '@/components/navigation/StockLink'
 
 interface ProfilePageClientProps {
@@ -15,55 +12,12 @@ interface ProfilePageClientProps {
 }
 
 export default function ProfilePageClient({ username }: ProfilePageClientProps) {
-  // Initialize demo data and track initialization state
-  const isInitialized = useInitializeDemoData()
-  const [isReady, setIsReady] = useState(false)
-  
-  // Get portfolio data from global state
-  const { portfolio, loading, error } = useUserPortfolio(username)
-  const stocks = useStocks()
+  // Fetch portfolio data from API
+  const { data: portfolio, loading, error } = usePortfolioSnapshotAPI(username)
 
-  // Get symbols for this portfolio and fetch live prices
-  const portfolioSymbols = portfolio?.positions?.map(pos => pos.symbol) || []
-  const { 
-    isLoading: pricesLoading, 
-    error: pricesError, 
-    lastFetchAt 
-  } = useSymbolPrices(portfolioSymbols, 60000) // Refresh every 60 seconds
-
-  // Get portfolio store data
-  const portfolioStore = usePortfolioStore()
-  const hasAnyPortfolios = Object.keys(portfolioStore.portfolios).length > 0
-  const hasStocks = Object.keys(stocks).length > 0
-
-  // Wait for data to be fully loaded before showing content
-  useEffect(() => {
-    if (isInitialized && hasAnyPortfolios) {
-      // Small delay to ensure state updates have propagated
-      const timer = setTimeout(() => {
-        setIsReady(true)
-      }, 100)
-      return () => clearTimeout(timer)
-    }
-  }, [isInitialized, hasAnyPortfolios])
-
-  // Debug logging
-  console.log('🔍 ProfilePage Debug:', {
-    username,
-    portfolio: portfolio ? 'Found' : 'Not found',
-    loading,
-    error,
-    isInitialized,
-    stocksCount: Object.keys(stocks).length,
-    portfolioSymbols: portfolioSymbols.length,
-    pricesLoading,
-    pricesError,
-    lastFetchAt: lastFetchAt ? new Date(lastFetchAt).toLocaleTimeString() : 'Never'
-  })
-
-  // Calculate portfolio metrics dynamically from holdings
+  // Use portfolio metrics directly from API
   const portfolioMetrics = useMemo(() => {
-    if (!portfolio?.positions.length || !Object.keys(stocks).length) {
+    if (!portfolio) {
       return {
         totalValue: 0,
         totalInvested: 0,
@@ -76,84 +30,23 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
       }
     }
 
-    let totalCurrentValue = 0
-    let totalInvestedAmount = 0
-    let totalDayChange = 0
-    const sectorCounts: Record<string, number> = {}
-    let largestPositionValue = 0
-    let primaryStock = portfolio.positions[0]?.symbol || 'N/A'
-
-    portfolio.positions.forEach(position => {
-      const stockData = stocks[position.symbol]
-      const currentPrice = stockData?.price || 0
-      const avgPrice = position.avgPrice
-      const shares = position.shares
-
-      // Calculate values
-      const currentValue = shares * currentPrice
-      const investedAmount = shares * avgPrice
-      const dayChangeAmount = stockData?.change ? shares * stockData.change : 0
-
-      // Accumulate totals
-      totalCurrentValue += currentValue
-      totalInvestedAmount += investedAmount
-      totalDayChange += dayChangeAmount
-
-      // Track sectors
-      if (position.sector) {
-        sectorCounts[position.sector] = (sectorCounts[position.sector] || 0) + 1
-      }
-
-      // Find primary stock (largest position by current value)
-      if (currentValue > largestPositionValue) {
-        largestPositionValue = currentValue
-        primaryStock = position.symbol
-      }
-    })
-
-    // Calculate percentages
-    const totalReturn = totalCurrentValue - totalInvestedAmount
-    const totalReturnPercent = totalInvestedAmount > 0 ? (totalReturn / totalInvestedAmount) * 100 : 0
-    const dayChangePercent = totalCurrentValue > 0 ? (totalDayChange / (totalCurrentValue - totalDayChange)) * 100 : 0
-
-    // Find primary sector
-    const primarySector = Object.entries(sectorCounts)
-      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A'
-
     return {
-      totalValue: totalCurrentValue,
-      totalInvested: totalInvestedAmount,
-      totalReturn,
-      totalReturnPercent,
-      dayChange: totalDayChange,
-      dayChangePercent,
-      primarySector,
-      primaryStock
+      totalValue: portfolio.totalValue,
+      totalInvested: portfolio.invested,
+      totalReturn: portfolio.totalValue - portfolio.invested,
+      totalReturnPercent: portfolio.totalReturnPct,
+      dayChange: portfolio.dayChangeValue,
+      dayChangePercent: portfolio.dayChangePct,
+      primarySector: portfolio.primarySector,
+      primaryStock: portfolio.positions[0]?.symbol || 'N/A'
     }
-  }, [portfolio?.positions, stocks])
+  }, [portfolio])
 
-  // Show loading if:
-  // 1. Not initialized yet, OR
-  // 2. Not ready yet (waiting for state propagation), OR
-  // 3. Store is actively loading
-  const isLoading = !isInitialized || !isReady || loading
+  // Simplified loading state
+  const isLoading = loading
 
-  // Debug the loading state
-  console.log('🔍 Loading State Debug:', {
-    username,
-    isInitialized,
-    isReady,
-    loading,
-    hasPortfolio: !!portfolio,
-    hasAnyPortfolios,
-    hasStocks,
-    portfolioCount: Object.keys(portfolioStore.portfolios).length,
-    finalIsLoading: isLoading,
-    error
-  })
-
-  // Only show error if we're fully ready but can't find the specific user
-  const shouldShowError = error || (isReady && !loading && !portfolio)
+  // Show error if API call failed or user not found
+  const shouldShowError = error || (!loading && !portfolio)
 
   if (isLoading) {
     return (
@@ -203,30 +96,20 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
   // Calculate additional metrics
   const totalPositions = portfolio?.positions?.length || 0
   const topPosition = portfolio?.positions?.reduce((top, position) => {
-    const stockData = stocks[position.symbol]
-    if (!stockData) return top
-    
-    const currentValue = position.shares * stockData.price
-    const topValue = top ? (stocks[top.symbol] ? top.shares * stocks[top.symbol].price : 0) : 0
+    const currentValue = position.currentValue
+    const topValue = top ? top.currentValue : 0
     
     return currentValue > topValue ? position : top
-  }, portfolio.positions[0]) || null
+  }, portfolio?.positions[0]) || null
 
   const worstPosition = portfolio?.positions?.reduce((worst: typeof portfolio.positions[0] | null, position) => {
-    const stockData = stocks[position.symbol]
-    if (!stockData) return worst
-    
-    const currentPrice = stockData.price
-    const gainPercent = ((currentPrice - position.avgPrice) / position.avgPrice) * 100
+    const returnPercent = position.returnPct
     
     if (!worst) return position
     
-    const worstStockData = stocks[worst.symbol]
-    if (!worstStockData) return position
+    const worstReturnPercent = worst.returnPct
     
-    const worstGainPercent = ((worstStockData.price - worst.avgPrice) / worst.avgPrice) * 100
-    
-    return gainPercent < worstGainPercent ? position : worst
+    return returnPercent < worstReturnPercent ? position : worst
   }, null) || null
 
   const getTierBadgeStyle = (tier: string) => {
@@ -260,14 +143,14 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
           </Link>
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {portfolio?.username || username}&apos;s Portfolio
+              {portfolio?.user?.username || username}&apos;s Portfolio
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Last updated {portfolio?.lastCalculated ? formatDate(portfolio.lastCalculated) : 'Never'}
+              Last updated {portfolio?.lastUpdated ? formatDate(new Date(portfolio.lastUpdated).getTime()) : 'Never'}
             </p>
           </div>
-          <div className={`px-4 py-2 rounded-full text-sm font-semibold ${getTierBadgeStyle(portfolio?.tier || 'C')}`}>
-            {portfolio?.tier || 'C'} Tier
+          <div className="px-4 py-2 rounded-full text-sm font-semibold bg-blue-500 text-white">
+            Portfolio
           </div>
         </div>
 
@@ -365,20 +248,7 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {portfolio?.positions.map((position) => {
-                      const stockData = stocks[position.symbol]
-                      const currentPrice = stockData?.price || 0
-                      const returnPercent = position.avgPrice > 0 ? ((currentPrice - position.avgPrice) / position.avgPrice) * 100 : 0
-                      
-                      // Debug logging for first position
-                      if (position.symbol === portfolio?.positions[0]?.symbol) {
-                        console.log(`🔍 Return calculation debug for ${position.symbol}:`, {
-                          symbol: position.symbol,
-                          avgPrice: position.avgPrice,
-                          currentPrice: currentPrice,
-                          stockData: stockData,
-                          returnPercent: returnPercent
-                        })
-                      }
+                      const returnPercent = position.returnPct
                       
                       // Format percentage with fallback
                       const formattedReturn = returnPercent >= 0 ? 
@@ -401,7 +271,7 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                             {formatCurrency(position.avgPrice)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            {formatCurrency(currentPrice)}
+                            {formatCurrency(position.currentPrice)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <div className={`${returnPercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -444,10 +314,7 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Current Value</p>
                     <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                      {stocks[topPosition.symbol] 
-                        ? formatCurrency(topPosition.shares * stocks[topPosition.symbol].price)
-                        : 'Loading...'
-                      }
+                      {formatCurrency(topPosition.currentValue)}
                     </p>
                   </div>
                 </div>
@@ -477,10 +344,7 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Current Value</p>
                     <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                      {stocks[worstPosition.symbol] 
-                        ? formatCurrency(worstPosition.shares * stocks[worstPosition.symbol].price)
-                        : 'Loading...'
-                      }
+                      {formatCurrency(worstPosition.currentValue)}
                     </p>
                   </div>
                 </div>
@@ -514,7 +378,7 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Last Update</span>
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {formatDate(portfolio?.lastCalculated || Date.now())}
+                    {portfolio?.lastUpdated ? formatDate(new Date(portfolio.lastUpdated).getTime()) : 'Never'}
                   </span>
                 </div>
                 <div className="flex justify-between">

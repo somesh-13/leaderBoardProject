@@ -97,7 +97,7 @@ export async function getDailyClose(ticker: string, date: string): Promise<numbe
     }
     
     if (data.results && data.results.length > 0) {
-      const closePrice = data.results[0].c
+      const closePrice = data.results[0]?.c || 0
       
       // Cache the result
       historicalCache.set(cacheKey, {
@@ -228,9 +228,9 @@ export async function getBatchPriceData(tickers: string[]): Promise<Record<strin
     
     batchResults.forEach((result, index) => {
       const ticker = batch[index]
-      if (result.status === 'fulfilled') {
+      if (ticker && result.status === 'fulfilled') {
         results[ticker] = result.value.priceData
-      } else {
+      } else if (ticker) {
         console.error(`❌ Failed to fetch data for ${ticker}:`, result.reason)
         results[ticker] = {
           close_2025_06_16: null,

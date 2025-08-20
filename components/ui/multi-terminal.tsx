@@ -38,6 +38,7 @@ function TerminalInstance({ session, onUpdate, isActive }: {
       }, 100);
       return () => clearTimeout(timer);
     }
+    return; // Explicitly return undefined
   }, [isActive]);
 
   const executeCommand = (command: string) => {
@@ -50,7 +51,7 @@ function TerminalInstance({ session, onUpdate, isActive }: {
     });
 
     const args = command.trim().split(' ');
-    const cmd = args[0].toLowerCase();
+    const cmd = args[0]?.toLowerCase() || '';
 
     switch (cmd) {
       case 'help':
@@ -184,7 +185,7 @@ Total Return: +42.5%`,
 
       case 'market':
         if (args.length >= 2) {
-          const symbol = args[1].toUpperCase();
+          const symbol = args[1]?.toUpperCase() || 'UNKNOWN';
           newHistory.push({
             type: 'output',
             content: `Market Data for ${symbol}:
@@ -265,7 +266,7 @@ Total Return: +42.5%`,
         onUpdate({
           ...session,
           historyIndex: newIndex,
-          input: session.commandHistory[session.commandHistory.length - 1 - newIndex]
+          input: session.commandHistory[session.commandHistory.length - 1 - newIndex] || ''
         });
       }
     } else if (e.key === 'ArrowDown') {
@@ -275,7 +276,7 @@ Total Return: +42.5%`,
         onUpdate({
           ...session,
           historyIndex: newIndex,
-          input: session.commandHistory[session.commandHistory.length - 1 - newIndex]
+          input: session.commandHistory[session.commandHistory.length - 1 - newIndex] || ''
         });
       } else if (session.historyIndex === 0) {
         onUpdate({
@@ -401,7 +402,7 @@ export default function MultiTerminal() {
       const newSessions = sessions.filter(s => s.id !== id);
       setSessions(newSessions);
       if (activeTabId === id) {
-        setActiveTabId(newSessions[0].id);
+        setActiveTabId(newSessions[0]?.id || '');
       }
     }
   };

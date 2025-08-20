@@ -123,7 +123,7 @@ export class HistoricalPriceService {
       }
 
       // Transform the data to include formatted dates based on exact API structure
-      const transformedResults: HistoricalDataPoint[] = data.results.map((point: {
+      const transformedResults = data.results.map((point: {
         v: number;    // Volume
         vw: number;   // Volume weighted average price
         o: number;    // Open
@@ -141,7 +141,7 @@ export class HistoricalPriceService {
         volume: point.v,
         vwap: point.vw,
         transactions: point.n,
-        date: new Date(point.t).toISOString().split('T')[0]
+        date: new Date(point.t || Date.now()).toISOString().split('T')[0]
       }))
 
       console.log(`✅ Retrieved ${transformedResults.length} data points for ${ticker} (${timeRange})`)
@@ -151,10 +151,10 @@ export class HistoricalPriceService {
         queryCount: data.queryCount,
         resultsCount: data.resultsCount,
         adjusted: true,
-        results: transformedResults,
+        results: transformedResults as HistoricalDataPoint[],
         status: data.status,
-        request_id: data.request_id,
-        next_url: data.next_url
+        request_id: data.request_id || '',
+        next_url: data.next_url || ''
       }
     } catch (error) {
       console.error(`❌ Error fetching historical data for ${ticker}:`, error)
@@ -202,7 +202,7 @@ export class HistoricalPriceService {
       }
 
       // Transform the data to include formatted dates based on exact API structure
-      const transformedResults: HistoricalDataPoint[] = data.results.map((point: {
+      const transformedResults = data.results.map((point: {
         v: number;    // Volume
         vw: number;   // Volume weighted average price
         o: number;    // Open
@@ -220,7 +220,7 @@ export class HistoricalPriceService {
         volume: point.v,
         vwap: point.vw,
         transactions: point.n,
-        date: new Date(point.t).toISOString().split('T')[0]
+        date: new Date(point.t || Date.now()).toISOString().split('T')[0]
       }))
 
       console.log(`✅ Retrieved ${transformedResults.length} data points for ${ticker} (custom range)`)
@@ -230,10 +230,10 @@ export class HistoricalPriceService {
         queryCount: data.queryCount,
         resultsCount: data.resultsCount,
         adjusted: true,
-        results: transformedResults,
+        results: transformedResults as HistoricalDataPoint[],
         status: data.status,
-        request_id: data.request_id,
-        next_url: data.next_url
+        request_id: data.request_id || '',
+        next_url: data.next_url || ''
       }
     } catch (error) {
       console.error(`❌ Error fetching custom range historical data for ${ticker}:`, error)
@@ -281,7 +281,7 @@ export class HistoricalPriceService {
         volume,
         vwap: Number(((open + high + low + close) / 4).toFixed(2)),
         transactions: Math.floor(volume / 100),
-        date: date.toISOString().split('T')[0]
+        date: (date || new Date()).toISOString().split('T')[0] as string
       })
       
       price = close
