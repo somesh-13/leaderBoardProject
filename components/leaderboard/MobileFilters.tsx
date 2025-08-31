@@ -13,7 +13,8 @@ interface MobileFiltersProps {
   setFilterSector: (value: string) => void
   setFilterCompany: (value: string) => void
   setFilterAsset: (value: string) => void
-  setPerformanceSinceDate: (value: string) => void
+  setTempPerformanceDate: (value: string) => void
+  handleApplyPerformanceDate: () => void
   onApplyFilters: () => void
 }
 
@@ -27,7 +28,8 @@ export default function MobileFilters({
   setFilterSector,
   setFilterCompany,
   setFilterAsset,
-  setPerformanceSinceDate,
+  setTempPerformanceDate,
+  handleApplyPerformanceDate,
   onApplyFilters
 }: MobileFiltersProps) {
   const [tempFilters, setTempFilters] = useState({
@@ -41,7 +43,8 @@ export default function MobileFilters({
     setFilterSector(tempFilters.sector)
     setFilterCompany(tempFilters.company)
     setFilterAsset(tempFilters.asset)
-    setPerformanceSinceDate(tempFilters.date)
+    setTempPerformanceDate(tempFilters.date)
+    handleApplyPerformanceDate()
     onApplyFilters()
     onClose()
   }
@@ -57,7 +60,8 @@ export default function MobileFilters({
     setFilterSector(resetFilters.sector)
     setFilterCompany(resetFilters.company)
     setFilterAsset(resetFilters.asset)
-    setPerformanceSinceDate(resetFilters.date)
+    setTempPerformanceDate(resetFilters.date)
+    handleApplyPerformanceDate()
     onApplyFilters()
     onClose()
   }

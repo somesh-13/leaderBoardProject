@@ -119,8 +119,8 @@ export const usePortfolioStore = create<PortfolioStore>()(
         leaderboardCache: null,
 
         filters: defaultFilters,
-        sortField: 'rank',
-        sortDirection: 'asc',
+        sortField: 'return',
+        sortDirection: 'desc',
         performanceSinceDate: '2025-06-16',
         lastPolygonFetchAt: 0,
         polygonFetchError: null,
@@ -604,7 +604,7 @@ export const usePortfolioStore = create<PortfolioStore>()(
           }
         },
 
-        // New method to fetch performance data for a specific date
+        // New method to fetch performance data using both snapshots and historical data
         fetchPerformanceDataForDate: async (date: string) => {
           try {
             console.log(`🔄 Fetching performance data for date: ${date}`)
@@ -621,31 +621,36 @@ export const usePortfolioStore = create<PortfolioStore>()(
 
             const symbolsArray = Array.from(allSymbols)
             if (symbolsArray.length === 0) {
-              console.warn('⚠️ No symbols found to fetch historical data')
+              console.warn('⚠️ No symbols found to fetch performance data')
               return
             }
 
-            console.log(`📊 Fetching historical data for ${symbolsArray.length} symbols on ${date}`)
+            console.log(`📊 Fetching both current snapshots and historical data for ${symbolsArray.length} symbols`)
             
             // Set loading state
             set({ stocksLoading: true, stocksError: null })
             
-            // Import the historical data service
-            const { getDailyClose } = await import('@/lib/services/polygonService')
+            // Fetch both current snapshots and historical data in parallel
+            const [, historicalResults] = await Promise.all([
+              // Current prices via snapshots
+              get().fetchPolygonPrices(symbolsArray),
+              // Historical prices for the performance date
+              Promise.allSettled(
+                symbolsArray.map(async (symbol) => {
+                  const { getDailyClose } = await import('@/lib/services/polygonService')
+                  const price = await getDailyClose(symbol, date)
+                  return { symbol, price }
+                })
+              )
+            ])
             
-            // Fetch historical prices for all symbols in parallel
-            const historicalPrices = await Promise.allSettled(
-              symbolsArray.map(async (symbol) => {
-                const price = await getDailyClose(symbol, date)
-                return { symbol, price }
-              })
-            )
-
-            // Process the results and update stock data
+            console.log(`✅ Both snapshot and historical data fetch completed`)
+            
+            // Process historical prices and update stock data
             const updatedStocks: Record<string, StockData> = { ...get().stocks }
             let successCount = 0
             
-            historicalPrices.forEach((result, index) => {
+            historicalResults.forEach((result, index) => {
               const symbol = symbolsArray[index]
               
               if (result.status === 'fulfilled' && result.value.price !== null) {
@@ -677,15 +682,17 @@ export const usePortfolioStore = create<PortfolioStore>()(
               lastPolygonFetchAt: Date.now()
             })
 
-            console.log(`✅ Historical data fetch completed: ${successCount}/${symbolsArray.length} symbols updated`)
+            console.log(`✅ Historical data processed: ${successCount}/${symbolsArray.length} symbols updated`)
             
-            // Refresh portfolio calculations with new historical data
-            get().refreshPortfolios()
-            get().refreshLeaderboard()
+            // Refresh portfolio calculations with updated stock data (current + historical)
+            await get().refreshPortfolios()
+            await get().refreshLeaderboard()
+            
+            console.log(`✅ Performance data update completed for date: ${date}`)
             
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to fetch performance data'
-            console.error('❌ Error fetching performance data for date:', error)
+            console.error('❌ Error fetching performance data:', error)
             
             set({ 
               stocksLoading: false,

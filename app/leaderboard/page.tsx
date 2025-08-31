@@ -31,6 +31,8 @@ export default function Leaderboard() {
   
   // Local UI state
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
+  const [isRefreshingForDate, setIsRefreshingForDate] = useState(false)
+  const [tempPerformanceDate, setTempPerformanceDate] = useState(store.performanceSinceDate)
   
   // Auto-refresh every 5 minutes
   useAutoRefresh(5 * 60 * 1000)
@@ -45,7 +47,27 @@ export default function Leaderboard() {
   const setFilterSector = (sector: string) => setFilters({ sector })
   const setFilterCompany = (company: string) => setFilters({ company })
   const setFilterAsset = (asset: string) => setFilters({ asset })
-  const setPerformanceSinceDate = (date: string) => store.setPerformanceSinceDate(date)
+  
+  const handleApplyPerformanceDate = async () => {
+    setIsRefreshingForDate(true)
+    console.log('🔄 Performance date changed to:', tempPerformanceDate, '- refreshing leaderboard...')
+    
+    try {
+      store.setPerformanceSinceDate(tempPerformanceDate)
+      
+      // Wait for the refresh to complete
+      // The store will automatically trigger fetchPerformanceDataForDate, refreshPortfolios, and refreshLeaderboard
+      // We'll wait a moment to ensure the operations complete
+      setTimeout(() => {
+        setIsRefreshingForDate(false)
+        console.log('✅ Leaderboard refreshed for new performance date')
+      }, 2000) // Give enough time for API calls to complete
+      
+    } catch (error) {
+      console.error('❌ Error refreshing data for new date:', error)
+      setIsRefreshingForDate(false)
+    }
+  }
 
   // Get leaderboard data from global state - no need for mock data anymore
   const leaderboardData = leaderboard
@@ -62,6 +84,8 @@ export default function Leaderboard() {
     setSorting(field, newDirection)
   }
 
+  // Combined loading state (removed unused variable warning)
+  
   // Use the filtered and sorted data directly from global state
   // Since filteredData comes from store.leaderboard which might be outdated,
   // we need to apply sorting and filtering to the dynamically calculated leaderboard
@@ -233,7 +257,8 @@ export default function Leaderboard() {
             setFilterSector('all')
             setFilterCompany('all')
             setFilterAsset('all')
-            setPerformanceSinceDate('2025-06-16')
+            setTempPerformanceDate('2025-06-16')
+            handleApplyPerformanceDate()
           }}
           className="flex items-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors min-h-[48px]"
           aria-label="Reset filters"
@@ -297,14 +322,30 @@ export default function Leaderboard() {
           
           <div>
             <label className="block text-sm font-medium mb-2">Performance Since</label>
-            <input
-              type="date"
-              value={performanceSinceDate}
-              onChange={(e) => setPerformanceSinceDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              aria-label="Select performance start date"
-            />
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={tempPerformanceDate}
+                onChange={(e) => setTempPerformanceDate(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+                className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                aria-label="Select performance start date"
+              />
+              <button
+                onClick={handleApplyPerformanceDate}
+                disabled={isRefreshingForDate || tempPerformanceDate === performanceSinceDate}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors"
+                aria-label="Apply performance date filter"
+              >
+                {isRefreshingForDate ? (
+                  <div className="flex items-center gap-1">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  </div>
+                ) : (
+                  'Apply'
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -320,7 +361,8 @@ export default function Leaderboard() {
         setFilterSector={setFilterSector}
         setFilterCompany={setFilterCompany}
         setFilterAsset={setFilterAsset}
-        setPerformanceSinceDate={setPerformanceSinceDate}
+        setTempPerformanceDate={setTempPerformanceDate}
+        handleApplyPerformanceDate={handleApplyPerformanceDate}
         onApplyFilters={() => {}}
       />
 
@@ -457,7 +499,8 @@ export default function Leaderboard() {
           setFilterSector('all')
           setFilterCompany('all')
           setFilterAsset('all')
-          setPerformanceSinceDate('2025-06-16')
+          setTempPerformanceDate('2025-06-16')
+          handleApplyPerformanceDate()
         }}
       />
 
