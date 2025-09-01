@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react'
 import StockPriceChart from '@/components/charts/StockPriceChart'
-import type { HistoricalDataPoint, TimeRange, PolygonAggregatesResponse } from '@/lib/services/historicalPriceService'
+import type { HistoricalDataPoint, TimeRange } from '@/lib/services/historicalPriceService'
 
 interface StockDetailData {
   ticker: string
@@ -37,23 +37,7 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('1M')
   const [fullHistoricalData, setFullHistoricalData] = useState<HistoricalDataPoint[] | null>(null)
 
-  // Function to get cached data from localStorage
-  const getCachedHistoricalData = useCallback((ticker: string): HistoricalDataPoint[] | null => {
-    try {
-      const cached = localStorage.getItem(`stock_history_${ticker.toUpperCase()}`)
-      if (cached) {
-        const data = JSON.parse(cached)
-        // Check if data is less than 1 hour old
-        if (Date.now() - data.timestamp < 60 * 60 * 1000) {
-          console.log(`📋 Using cached data for ${ticker}`)
-          return data.historicalData
-        }
-      }
-    } catch (error) {
-      console.warn('Error reading cached data:', error)
-    }
-    return null
-  }, [])
+
 
   // Function to cache historical data in localStorage
   const setCachedHistoricalData = useCallback((ticker: string, data: HistoricalDataPoint[]) => {
@@ -110,304 +94,11 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
     return data.filter(point => point.timestamp >= startDate.getTime())
   }, [])
 
-  // Generate mock historical data for fallback
-  const generateMockHistoricalData = useCallback((
-    ticker: string, 
-    timeRange: TimeRange,
-    currentPrice: number = 100
-  ): HistoricalDataPoint[] => {
-    const endDate = new Date()
-    const startDate = new Date()
-    
-    let days = 30 // Default to 1 month
-    switch (timeRange) {
-      case '1D': days = 1; break
-      case '5D': days = 5; break
-      case '1M': days = 30; break
-      case '3M': days = 90; break
-      case '6M': days = 180; break
-      case '1Y': days = 365; break
-      case '2Y': days = 730; break
-      case '5Y': days = 1825; break
-    }
-    
-    startDate.setDate(endDate.getDate() - days)
 
-    const results: HistoricalDataPoint[] = []
-    const totalPoints = Math.min(days, 250)
-    
-    let price = currentPrice * 0.9 // Start 10% below current
-    const volatility = 0.02 // 2% daily volatility
-    
-    for (let i = 0; i < totalPoints; i++) {
-      const date = new Date(startDate)
-      date.setDate(startDate.getDate() + (i * days / totalPoints))
-      
-      const changePercent = (Math.random() - 0.5) * volatility * 2
-      const open = price
-      const close = price * (1 + changePercent)
-      const high = Math.max(open, close) * (1 + Math.random() * 0.01)
-      const low = Math.min(open, close) * (1 - Math.random() * 0.01)
-      const volume = Math.floor(Math.random() * 10000000) + 1000000
-      
-      results.push({
-        timestamp: date.getTime(),
-        open: Number(open.toFixed(2)),
-        high: Number(high.toFixed(2)),
-        low: Number(low.toFixed(2)),
-        close: Number(close.toFixed(2)),
-        volume,
-        vwap: Number(((open + high + low + close) / 4).toFixed(2)),
-        transactions: Math.floor(volume / 100),
-        date: date.toISOString().split('T')[0]
-      })
-      
-      price = close
-    }
 
-    console.log(`📊 Generated ${results.length} mock data points for ${ticker} (${timeRange})`)
-    return results
-  }, [])
 
-  // Function to fetch historical data directly from Polygon.io
-  const fetchHistoricalDataFromPolygon = useCallback(async (
-    ticker: string, 
-    timeRange: TimeRange
-  ): Promise<HistoricalDataPoint[] | null> => {
-    const API_KEY = process.env.NEXT_PUBLIC_POLYGON_API_KEY
-    
-    if (!API_KEY) {
-      console.warn('Polygon API key not found, using mock data')
-      return generateMockHistoricalData(ticker, timeRange)
-    }
 
-    try {
-      // Calculate date range based on timeRange
-      const endDate = new Date()
-      const startDate = new Date()
-      
-      let multiplier = 1
-      let timespan = 'day'
-      
-      switch (timeRange) {
-        case '1D':
-          startDate.setDate(endDate.getDate() - 1)
-          multiplier = 5
-          timespan = 'minute'
-          break
-        case '5D':
-          startDate.setDate(endDate.getDate() - 5)
-          multiplier = 15
-          timespan = 'minute'
-          break
-        case '1M':
-          startDate.setMonth(endDate.getMonth() - 1)
-          multiplier = 1
-          timespan = 'day'
-          break
-        case '3M':
-          startDate.setMonth(endDate.getMonth() - 3)
-          multiplier = 1
-          timespan = 'day'
-          break
-        case '6M':
-          startDate.setMonth(endDate.getMonth() - 6)
-          multiplier = 1
-          timespan = 'day'
-          break
-        case '1Y':
-          startDate.setFullYear(endDate.getFullYear() - 1)
-          multiplier = 1
-          timespan = 'day'
-          break
-        case '2Y':
-          startDate.setFullYear(endDate.getFullYear() - 2)
-          multiplier = 1
-          timespan = 'week'
-          break
-        case '5Y':
-          startDate.setFullYear(endDate.getFullYear() - 5)
-          multiplier = 1
-          timespan = 'week'
-          break
-      }
 
-      const fromDate = startDate.toISOString().split('T')[0]
-      const toDate = endDate.toISOString().split('T')[0]
-
-      // Build Polygon.io API URL - using the exact format from your example
-      const polygonUrl = `https://api.polygon.io/v2/aggs/ticker/${ticker.toUpperCase()}/range/${multiplier}/${timespan}/${fromDate}/${toDate}?adjusted=true&sort=asc&limit=50000&apiKey=${API_KEY}`
-      
-      console.log(`📊 Fetching historical data from Polygon.io for ${ticker} (${timeRange}):`, polygonUrl)
-      
-      const response = await fetch(polygonUrl, {
-        headers: {
-          'User-Agent': 'leaderboard-app/1.0'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error(`Polygon API error: ${response.status} ${response.statusText}`)
-      }
-
-      const data: PolygonAggregatesResponse = await response.json()
-      
-      // Accept both "OK" and "DELAYED" status as per your API response example
-      if ((data.status !== 'OK' && data.status !== 'DELAYED') || !data.results || data.results.length === 0) {
-        console.warn(`No historical data available for ${ticker} (status: ${data.status}), using mock data`)
-        return generateMockHistoricalData(ticker, timeRange)
-      }
-
-      // Transform Polygon.io response to our format based on exact API structure
-      const transformedResults: HistoricalDataPoint[] = data.results.map((point: {
-        v: number;    // Volume
-        vw: number;   // Volume weighted average price
-        o: number;    // Open
-        c: number;    // Close
-        h: number;    // High
-        l: number;    // Low
-        t: number;    // Timestamp (Unix ms)
-        n: number;    // Number of transactions
-      }) => ({
-        timestamp: point.t,
-        open: point.o,
-        high: point.h,
-        low: point.l,
-        close: point.c,
-        volume: point.v,
-        vwap: point.vw,
-        transactions: point.n,
-        date: new Date(point.t).toISOString().split('T')[0]
-      }))
-
-      console.log(`✅ Fetched ${transformedResults.length} data points from Polygon.io for ${ticker}`)
-      console.log(`📈 Latest closing price (c): $${data.results[data.results.length - 1].c} for ${ticker}`)
-      return transformedResults
-
-    } catch (error) {
-      console.error(`❌ Error fetching historical data from Polygon.io for ${ticker}:`, error)
-      // Fallback to mock data
-      return generateMockHistoricalData(ticker, timeRange)
-    }
-  }, [generateMockHistoricalData])
-
-  // Function to fetch snapshot data directly from Polygon.io
-  const fetchPolygonSnapshotDirect = useCallback(async (ticker: string) => {
-    const API_KEY = process.env.NEXT_PUBLIC_POLYGON_API_KEY
-    
-    if (!API_KEY) {
-      throw new Error('Polygon API key not found')
-    }
-
-    try {
-      const response = await fetch(
-        `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}?apikey=${API_KEY}`,
-        {
-          headers: {
-            'User-Agent': 'leaderboard-app/1.0'
-          }
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      console.log(`📊 Direct Polygon API response for ${ticker}:`, JSON.stringify(data, null, 2))
-      
-      if (data.status === 'OK' && data.ticker) {
-        const ticker_data = data.ticker
-        const day = ticker_data.day || {}
-        const prevDay = ticker_data.prevDay || {}
-        
-        const currentPrice = day.c || 0
-        const previousClose = prevDay.c || 0
-        const change = currentPrice - previousClose
-        const changePercent = previousClose ? (change / previousClose) * 100 : 0
-        
-        // Mock company names for common tickers
-        const companyNames: Record<string, string> = {
-          AAPL: 'Apple Inc.',
-          TSLA: 'Tesla, Inc.',
-          MSFT: 'Microsoft Corporation',
-          GOOGL: 'Alphabet Inc.',
-          AMZN: 'Amazon.com, Inc.',
-          META: 'Meta Platforms, Inc.',
-          NVDA: 'NVIDIA Corporation',
-          PLTR: 'Palantir Technologies Inc.',
-          RKLB: 'Rocket Lab USA, Inc.',
-          HOOD: 'Robinhood Markets, Inc.',
-          SOFI: 'SoFi Technologies, Inc.',
-          JPM: 'JPMorgan Chase & Co.',
-          UNH: 'UnitedHealth Group Incorporated',
-          MSTR: 'MicroStrategy Incorporated',
-          HIMS: 'Hims & Hers Health, Inc.',
-          NOW: 'ServiceNow, Inc.',
-          MELI: 'MercadoLibre, Inc.',
-          SHOP: 'Shopify Inc.',
-          TTD: 'The Trade Desk, Inc.',
-          ASML: 'ASML Holding N.V.',
-          APP: 'AppLovin Corporation',
-          COIN: 'Coinbase Global, Inc.',
-          TSM: 'Taiwan Semiconductor Manufacturing Company Limited',
-          MRVL: 'Marvell Technology, Inc.',
-          AXON: 'Axon Enterprise, Inc.',
-          ELF: 'e.l.f. Beauty, Inc.',
-          ORCL: 'Oracle Corporation',
-          CSCO: 'Cisco Systems, Inc.',
-          LLY: 'Eli Lilly and Company',
-          NVO: 'Novo Nordisk A/S',
-          TTWO: 'Take-Two Interactive Software, Inc.',
-          ASTS: 'AST SpaceMobile, Inc.',
-          'BRK.B': 'Berkshire Hathaway Inc.',
-          CELH: 'Celsius Holdings, Inc.',
-          OSCR: 'Oscar Health, Inc.',
-          EOG: 'EOG Resources, Inc.',
-          BROS: 'Dutch Bros Inc.',
-          ABCL: 'AbCellera Biologics Inc.',
-          AMD: 'Advanced Micro Devices, Inc.',
-          NBIS: 'Nebius Group N.V.',
-          GRAB: 'Grab Holdings Limited',
-          V: 'Visa Inc.',
-          DUOL: 'Duolingo, Inc.',
-          AVGO: 'Broadcom Inc.',
-          CRWD: 'CrowdStrike Holdings, Inc.',
-          NFLX: 'Netflix, Inc.',
-          CRM: 'Salesforce, Inc.',
-          PYPL: 'PayPal Holdings, Inc.',
-          MU: 'Micron Technology, Inc.',
-          NU: 'Nu Holdings Ltd.',
-          SPY: 'SPDR S&P 500 ETF Trust',
-          QQQ: 'Invesco QQQ Trust'
-        }
-        
-        return {
-          ticker: ticker.toUpperCase(),
-          name: companyNames[ticker.toUpperCase()] || `${ticker.toUpperCase()} Inc.`,
-          price: currentPrice,
-          change: change,
-          changePercent: changePercent,
-          volume: day.v || 0,
-          marketCap: `$${(Math.random() * 1000 + 100).toFixed(1)}B`,
-          dayHigh: day.h || currentPrice,
-          dayLow: day.l || currentPrice,
-          open: day.o || currentPrice,
-          previousClose: previousClose,
-          pe: Math.random() * 30 + 10,
-          yearHigh: currentPrice * (1 + Math.random() * 0.5),
-          yearLow: currentPrice * (1 - Math.random() * 0.3),
-          avgVolume: (day.v || 0) * (0.8 + Math.random() * 0.4),
-          lastUpdated: new Date().toLocaleTimeString()
-        }
-      }
-      
-      throw new Error(`Invalid response from Polygon API: ${data.status}`)
-    } catch (error) {
-      console.error('Error fetching snapshot from Polygon API:', error)
-      throw error
-    }
-  }, [])
 
   useEffect(() => {
     const fetchStockDetail = async () => {
@@ -415,35 +106,33 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
         setLoading(true)
         setError(null)
         
-        // Fetch basic stock data directly from Polygon.io
-        const basicData = await fetchPolygonSnapshotDirect(ticker)
-
-        // Check for cached historical data first
-        let historicalData = getCachedHistoricalData(ticker)
+        // Use the existing API route instead of direct Polygon.io calls
+        const response = await fetch(`/api/stocks/${ticker}?includeHistory=true&timeRange=5Y`)
         
-        if (!historicalData) {
-          // Fetch full historical data (5Y) only once and cache it
-          console.log(`🔄 Fetching fresh historical data for ${ticker}`)
-          historicalData = await fetchHistoricalDataFromPolygon(ticker, '5Y')
-          
-          if (historicalData) {
-            setFullHistoricalData(historicalData)
-            setCachedHistoricalData(ticker, historicalData)
-          }
-        } else {
-          setFullHistoricalData(historicalData)
+        if (!response.ok) {
+          throw new Error(`Failed to fetch stock data: ${response.status} ${response.statusText}`)
+        }
+        
+        const stockDetailData = await response.json()
+        
+        // Cache the historical data if available
+        if (stockDetailData.historicalData) {
+          setFullHistoricalData(stockDetailData.historicalData)
+          setCachedHistoricalData(ticker, stockDetailData.historicalData)
         }
         
         // Initially show 1M data by default
-        const filteredData = historicalData ? filterHistoricalDataByTimeRange(historicalData, '1M') : []
+        const filteredData = stockDetailData.historicalData ? 
+          filterHistoricalDataByTimeRange(stockDetailData.historicalData, '1M') : []
         
-        // Combine the data
-        const combinedData = {
-          ...basicData,
+        // Set the stock data with filtered historical data
+        setStockData({
+          ...stockDetailData,
           historicalData: filteredData
-        }
+        })
         
-        setStockData(combinedData)
+        console.log(`✅ Successfully fetched stock data for ${ticker}: ${stockDetailData.price}`)
+        
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error occurred')
         console.error('Error fetching stock details:', err)
@@ -455,7 +144,7 @@ export default function StockDetailClient({ ticker }: StockDetailClientProps) {
     if (ticker) {
       fetchStockDetail()
     }
-  }, [ticker, getCachedHistoricalData, setCachedHistoricalData, fetchHistoricalDataFromPolygon, filterHistoricalDataByTimeRange, fetchPolygonSnapshotDirect])
+  }, [ticker, setCachedHistoricalData, filterHistoricalDataByTimeRange])
 
   // Separate effect to handle time range changes without refetching data
   useEffect(() => {

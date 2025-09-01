@@ -86,6 +86,7 @@ async function fetchPolygonSnapshot(ticker: string): Promise<StockDetailData | n
   }
 
   try {
+    // First try to get snapshot data
     const response = await fetch(
       `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}?apikey=${API_KEY}`,
       {
@@ -107,8 +108,41 @@ async function fetchPolygonSnapshot(ticker: string): Promise<StockDetailData | n
       const day = ticker_data.day || {}
       const prevDay = ticker_data.prevDay || {}
       
-      const currentPrice = day.c || 0
-      const previousClose = prevDay.c || 0
+      // Use day.c if available (market hours), otherwise use prevDay.c (market closed)
+      let currentPrice = day.c || 0
+      let previousClose = prevDay.c || 0
+      
+      // If current day close is 0, try to get last trade price
+      if (currentPrice === 0 && previousClose > 0) {
+        try {
+          const lastTradeResponse = await fetch(
+            `https://api.polygon.io/v2/last/trade/${ticker}?apikey=${API_KEY}`,
+            {
+              headers: {
+                'User-Agent': 'leaderboard-app/1.0'
+              }
+            }
+          )
+          
+          if (lastTradeResponse.ok) {
+            const lastTradeData = await lastTradeResponse.json()
+            if (lastTradeData.status === 'OK' || lastTradeData.status === 'DELAYED') {
+              currentPrice = lastTradeData.results?.p || previousClose
+              console.log(`💰 Using last trade price for ${ticker}: ${currentPrice}`)
+            }
+          }
+        } catch (lastTradeError) {
+          console.warn('Could not fetch last trade price, using previous close:', lastTradeError)
+          currentPrice = previousClose
+        }
+      }
+      
+      // Final fallback: use previous close if we still don't have a current price
+      if (currentPrice === 0 && previousClose > 0) {
+        currentPrice = previousClose
+        console.log(`📈 Using previous close for ${ticker}: ${currentPrice}`)
+      }
+      
       const change = currentPrice - previousClose
       const changePercent = previousClose ? (change / previousClose) * 100 : 0
       

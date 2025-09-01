@@ -13,7 +13,9 @@
     "test:watch": "node __tests__/file-watcher.js",
     "validate": "node test-runner.js",
     "test-polygon": "npx tsx scripts/testPolygonIntegration.ts",
-    "update-prices": "npx tsx scripts/updatePortfolioWithRealPrices.ts"
+    "update-prices": "npx tsx scripts/updatePortfolioWithRealPrices.ts",
+    "seed-portfolios": "npx tsx scripts/seedPortfolioData.ts",
+    "test-portfolio-service": "npx tsx -r dotenv/config scripts/testPortfolioService.ts dotenv_config_path=.env"
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.10.0",

@@ -1,159 +1,76 @@
 'use client'
 
-import { useMemo } from 'react'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, TrendingUp, TrendingDown, Target, Calendar, Briefcase } from 'lucide-react'
-import { useUserPortfolio, useInitializeDemoData } from '@/lib/hooks/usePortfolioData'
-import { useStocks, usePortfolioStore } from '@/lib/store/portfolioStore'
+import useSWR from 'swr'
+import { ArrowLeft, TrendingUp, TrendingDown, Calendar, Briefcase, RefreshCw } from 'lucide-react'
 import { formatCurrency, formatPercentage } from '@/lib/utils/portfolioCalculations'
-import { useSymbolPrices } from '@/lib/hooks/useLivePrices'
 import StockLink from '@/components/navigation/StockLink'
+import { APIResponse, Position, PortfolioSnapshot, SectorAllocation, User } from '@/lib/types/leaderboard'
+
+interface PortfolioSnapshotResponse extends PortfolioSnapshot {
+  user: User;
+  positions: Position[];
+  sectorAllocations: SectorAllocation[];
+}
 
 interface ProfilePageClientProps {
   username: string
 }
 
-export default function ProfilePageClient({ username }: ProfilePageClientProps) {
-  // Initialize demo data and track initialization state
-  const isInitialized = useInitializeDemoData()
-  const [isReady, setIsReady] = useState(false)
+// Fetcher function for SWR
+const fetcher = async (url: string): Promise<PortfolioSnapshotResponse> => {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`)
+  }
+  const data: APIResponse<PortfolioSnapshotResponse> = await response.json()
   
-  // Get portfolio data from global state
-  const { portfolio, loading, error } = useUserPortfolio(username)
-  const stocks = useStocks()
+  if (!data.success) {
+    throw new Error(data.error || 'API request failed')
+  }
+  
+  if (!data.data) {
+    throw new Error('No data received')
+  }
+  
+  return data.data
+}
 
-  // Get symbols for this portfolio and fetch live prices
-  const portfolioSymbols = portfolio?.positions?.map(pos => pos.symbol) || []
+export default function ProfilePageClient({ username }: ProfilePageClientProps) {
+  const [lastRefreshAt, setLastRefreshAt] = useState<Date>(new Date())
+
+  // Fetch portfolio snapshot from MongoDB-enabled API
   const { 
-    isLoading: pricesLoading, 
-    error: pricesError, 
-    lastFetchAt 
-  } = useSymbolPrices(portfolioSymbols, 60000) // Refresh every 60 seconds
-
-  // Get portfolio store data
-  const portfolioStore = usePortfolioStore()
-  const hasAnyPortfolios = Object.keys(portfolioStore.portfolios).length > 0
-  const hasStocks = Object.keys(stocks).length > 0
-
-  // Wait for data to be fully loaded before showing content
-  useEffect(() => {
-    if (isInitialized && hasAnyPortfolios) {
-      // Small delay to ensure state updates have propagated
-      const timer = setTimeout(() => {
-        setIsReady(true)
-      }, 100)
-      return () => clearTimeout(timer)
+    data: portfolioSnapshot, 
+    error, 
+    isLoading,
+    mutate: refreshPortfolio
+  } = useSWR<PortfolioSnapshotResponse>(
+    `/api/portfolio/${encodeURIComponent(username)}/snapshot`,
+    fetcher,
+    {
+      refreshInterval: 30000, // Auto-refresh every 30 seconds
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      errorRetryCount: 3,
+      errorRetryInterval: 5000,
+      onSuccess: () => setLastRefreshAt(new Date())
     }
-  }, [isInitialized, hasAnyPortfolios])
+  )
 
-  // Debug logging
-  console.log('🔍 ProfilePage Debug:', {
+  const handleRefresh = async () => {
+    await refreshPortfolio()
+    setLastRefreshAt(new Date())
+  }
+
+  console.log('🔍 ProfilePageClient Debug:', {
     username,
-    portfolio: portfolio ? 'Found' : 'Not found',
-    loading,
-    error,
-    isInitialized,
-    stocksCount: Object.keys(stocks).length,
-    portfolioSymbols: portfolioSymbols.length,
-    pricesLoading,
-    pricesError,
-    lastFetchAt: lastFetchAt ? new Date(lastFetchAt).toLocaleTimeString() : 'Never'
+    portfolioSnapshot: portfolioSnapshot ? 'Found' : 'Not found',
+    isLoading,
+    error: error?.message,
+    lastRefresh: lastRefreshAt.toLocaleTimeString()
   })
-
-  // Calculate portfolio metrics dynamically from holdings
-  const portfolioMetrics = useMemo(() => {
-    if (!portfolio?.positions.length || !Object.keys(stocks).length) {
-      return {
-        totalValue: 0,
-        totalInvested: 0,
-        totalReturn: 0,
-        totalReturnPercent: 0,
-        dayChange: 0,
-        dayChangePercent: 0,
-        primarySector: 'N/A',
-        primaryStock: 'N/A'
-      }
-    }
-
-    let totalCurrentValue = 0
-    let totalInvestedAmount = 0
-    let totalDayChange = 0
-    const sectorCounts: Record<string, number> = {}
-    let largestPositionValue = 0
-    let primaryStock = portfolio.positions[0]?.symbol || 'N/A'
-
-    portfolio.positions.forEach(position => {
-      const stockData = stocks[position.symbol]
-      const currentPrice = stockData?.price || 0
-      const avgPrice = position.avgPrice
-      const shares = position.shares
-
-      // Calculate values
-      const currentValue = shares * currentPrice
-      const investedAmount = shares * avgPrice
-      const dayChangeAmount = stockData?.change ? shares * stockData.change : 0
-
-      // Accumulate totals
-      totalCurrentValue += currentValue
-      totalInvestedAmount += investedAmount
-      totalDayChange += dayChangeAmount
-
-      // Track sectors
-      if (position.sector) {
-        sectorCounts[position.sector] = (sectorCounts[position.sector] || 0) + 1
-      }
-
-      // Find primary stock (largest position by current value)
-      if (currentValue > largestPositionValue) {
-        largestPositionValue = currentValue
-        primaryStock = position.symbol
-      }
-    })
-
-    // Calculate percentages
-    const totalReturn = totalCurrentValue - totalInvestedAmount
-    const totalReturnPercent = totalInvestedAmount > 0 ? (totalReturn / totalInvestedAmount) * 100 : 0
-    const dayChangePercent = totalCurrentValue > 0 ? (totalDayChange / (totalCurrentValue - totalDayChange)) * 100 : 0
-
-    // Find primary sector
-    const primarySector = Object.entries(sectorCounts)
-      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A'
-
-    return {
-      totalValue: totalCurrentValue,
-      totalInvested: totalInvestedAmount,
-      totalReturn,
-      totalReturnPercent,
-      dayChange: totalDayChange,
-      dayChangePercent,
-      primarySector,
-      primaryStock
-    }
-  }, [portfolio?.positions, stocks])
-
-  // Show loading if:
-  // 1. Not initialized yet, OR
-  // 2. Not ready yet (waiting for state propagation), OR
-  // 3. Store is actively loading
-  const isLoading = !isInitialized || !isReady || loading
-
-  // Debug the loading state
-  console.log('🔍 Loading State Debug:', {
-    username,
-    isInitialized,
-    isReady,
-    loading,
-    hasPortfolio: !!portfolio,
-    hasAnyPortfolios,
-    hasStocks,
-    portfolioCount: Object.keys(portfolioStore.portfolios).length,
-    finalIsLoading: isLoading,
-    error
-  })
-
-  // Only show error if we're fully ready but can't find the specific user
-  const shouldShowError = error || (isReady && !loading && !portfolio)
 
   if (isLoading) {
     return (
@@ -176,8 +93,7 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
     )
   }
 
-  // Only show error if we have data loaded but can't find the specific user
-  if (shouldShowError) {
+  if (error || !portfolioSnapshot) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -186,64 +102,56 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
             Profile Not Found
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            The user &quot;{username}&quot; doesn&apos;t exist or their portfolio data couldn&apos;t be loaded.
+            {error?.message || `The user "${username}" doesn't exist or their portfolio data couldn't be loaded.`}
           </p>
-          <Link 
-            href="/leaderboard"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Leaderboard
-          </Link>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={handleRefresh}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Try Again
+            </button>
+            <Link 
+              href="/leaderboard"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Leaderboard
+            </Link>
+          </div>
         </div>
       </div>
     )
   }
 
+  const { user, positions, sectorAllocations, totalValue, invested, totalReturnPct, dayChangePct, dayChangeValue, lastUpdated } = portfolioSnapshot
+
   // Calculate additional metrics
-  const totalPositions = portfolio?.positions?.length || 0
-  const topPosition = portfolio?.positions?.reduce((top, position) => {
-    const stockData = stocks[position.symbol]
-    if (!stockData) return top
-    
-    const currentValue = position.shares * stockData.price
-    const topValue = top ? (stocks[top.symbol] ? top.shares * stocks[top.symbol].price : 0) : 0
-    
-    return currentValue > topValue ? position : top
-  }, portfolio.positions[0]) || null
+  const totalReturn = totalValue - invested
+  const totalPositions = positions.length
 
-  const worstPosition = portfolio?.positions?.reduce((worst: typeof portfolio.positions[0] | null, position) => {
-    const stockData = stocks[position.symbol]
-    if (!stockData) return worst
-    
-    const currentPrice = stockData.price
-    const gainPercent = ((currentPrice - position.avgPrice) / position.avgPrice) * 100
-    
-    if (!worst) return position
-    
-    const worstStockData = stocks[worst.symbol]
-    if (!worstStockData) return position
-    
-    const worstGainPercent = ((worstStockData.price - worst.avgPrice) / worst.avgPrice) * 100
-    
-    return gainPercent < worstGainPercent ? position : worst
-  }, null) || null
+  // Find best and worst performing positions
+  const bestPosition = positions.reduce((best: Position, pos: Position) => 
+    (pos.returnPct > (best?.returnPct || -Infinity)) ? pos : best, positions[0]
+  )
 
-  const getTierBadgeStyle = (tier: string) => {
-    const styles = {
-      'S': 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-white',
-      'A': 'bg-gradient-to-r from-green-400 to-green-600 text-white', 
-      'B': 'bg-gradient-to-r from-blue-400 to-blue-600 text-white',
-      'C': 'bg-gradient-to-r from-gray-400 to-gray-600 text-white'
-    }
-    return styles[tier as keyof typeof styles] || styles.C
-  }
+  const worstPosition = positions.reduce((worst: Position, pos: Position) => 
+    (pos.returnPct < (worst?.returnPct || Infinity)) ? pos : worst, positions[0]
+  )
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', { 
+  // Calculate primary sector value
+  const primarySectorAllocation = sectorAllocations[0]
+
+  // Remove unused function
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric', 
-      year: 'numeric' 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     })
   }
 
@@ -260,15 +168,20 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
           </Link>
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {portfolio?.username || username}&apos;s Portfolio
+              {user.displayName}&apos;s Portfolio
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Last updated {portfolio?.lastCalculated ? formatDate(portfolio.lastCalculated) : 'Never'}
+              Last updated {formatDate(lastUpdated)}
             </p>
           </div>
-          <div className={`px-4 py-2 rounded-full text-sm font-semibold ${getTierBadgeStyle(portfolio?.tier || 'C')}`}>
-            {portfolio?.tier || 'C'} Tier
-          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -280,12 +193,12 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Return</p>
-                    <p className={`text-2xl font-bold ${portfolioMetrics.totalReturnPercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {formatPercentage(portfolioMetrics.totalReturnPercent, { showSign: true })}
+                    <p className={`text-2xl font-bold ${totalReturnPct >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {formatPercentage(totalReturnPct, { showSign: true })}
                     </p>
                   </div>
-                  <div className={`p-3 rounded-lg ${portfolioMetrics.totalReturnPercent >= 0 ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'}`}>
-                    {portfolioMetrics.totalReturnPercent >= 0 ? (
+                  <div className={`p-3 rounded-lg ${totalReturnPct >= 0 ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'}`}>
+                    {totalReturnPct >= 0 ? (
                       <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
                     ) : (
                       <TrendingDown className="h-6 w-6 text-red-600 dark:text-red-400" />
@@ -293,8 +206,11 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2">
-                  <span className={`text-sm ${portfolioMetrics.totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {formatCurrency(portfolioMetrics.totalReturn, { showSign: true })}
+                  <span className={`text-sm ${totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {formatCurrency(totalReturn, { showSign: true })}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    on {formatCurrency(invested)} invested
                   </span>
                 </div>
               </div>
@@ -303,8 +219,8 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Day Change</p>
-                    <p className={`text-2xl font-bold ${portfolioMetrics.dayChangePercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {formatPercentage(portfolioMetrics.dayChangePercent, { showSign: true })}
+                    <p className={`text-2xl font-bold ${dayChangePct >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {formatPercentage(dayChangePct, { showSign: true })}
                     </p>
                   </div>
                   <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
@@ -312,8 +228,8 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2">
-                  <span className={`text-sm ${portfolioMetrics.dayChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {formatCurrency(portfolioMetrics.dayChange, { showSign: true })}
+                  <span className={`text-sm ${dayChangeValue >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {formatCurrency(dayChangeValue, { showSign: true })}
                   </span>
                 </div>
               </div>
@@ -321,9 +237,9 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Primary Sector</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Portfolio Value</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {portfolioMetrics.primarySector}
+                      {formatCurrency(totalValue)}
                     </p>
                   </div>
                   <div className="p-3 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg">
@@ -332,7 +248,7 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                 </div>
                 <div className="mt-4 flex items-center gap-2">
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Primary: <StockLink ticker={portfolioMetrics.primaryStock} className="hover:text-blue-600 dark:hover:text-blue-400">{portfolioMetrics.primaryStock}</StockLink>
+                    {totalPositions} positions
                   </span>
                 </div>
               </div>
@@ -352,67 +268,63 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Symbol
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Avg Price
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Shares
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Avg Cost
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Current Price
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Market Value
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Return
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {portfolio?.positions.map((position) => {
-                      const stockData = stocks[position.symbol]
-                      const currentPrice = stockData?.price || 0
-                      const returnPercent = position.avgPrice > 0 ? ((currentPrice - position.avgPrice) / position.avgPrice) * 100 : 0
-                      
-                      // Debug logging for first position
-                      if (position.symbol === portfolio?.positions[0]?.symbol) {
-                        console.log(`🔍 Return calculation debug for ${position.symbol}:`, {
-                          symbol: position.symbol,
-                          avgPrice: position.avgPrice,
-                          currentPrice: currentPrice,
-                          stockData: stockData,
-                          returnPercent: returnPercent
-                        })
-                      }
-                      
-                      // Format percentage with fallback
-                      const formattedReturn = returnPercent >= 0 ? 
-                        `+${returnPercent.toFixed(2)}%` : 
-                        `${returnPercent.toFixed(2)}%`
-
-                      return (
-                        <tr key={position.symbol} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <StockLink ticker={position.symbol} className="text-sm font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
-                                {position.symbol}
-                              </StockLink>
-                              <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
-                                {position.sector || 'N/A'}
-                              </span>
+                    {positions.map((position) => (
+                      <tr key={position.symbol} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <StockLink 
+                              ticker={position.symbol} 
+                              className="text-sm font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+                            >
+                              {position.symbol}
+                            </StockLink>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {position.sector || 'N/A'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
+                          {position.shares.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
+                          {formatCurrency(position.avgPrice)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
+                          {formatCurrency(position.currentPrice)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
+                          {formatCurrency(position.currentValue)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                          <div className={`${position.returnPct >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            <div className="font-medium">
+                              {formatPercentage(position.returnPct, { showSign: true })}
                             </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            {formatCurrency(position.avgPrice)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            {formatCurrency(currentPrice)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <div className={`${returnPercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                              <div className="font-medium">
-                                {formattedReturn}
-                              </div>
+                            <div className="text-xs">
+                              {formatCurrency(position.returnValue, { showSign: true })}
                             </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -421,33 +333,33 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Top Performer */}
-            {topPosition && (
+            {/* Best Performer */}
+            {bestPosition && (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                    <Target className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Top Position
+                    Best Performer
                   </h3>
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <StockLink ticker={topPosition.symbol} className="text-2xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
-                      {topPosition.symbol}
+                    <StockLink 
+                      ticker={bestPosition.symbol} 
+                      className="text-2xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+                    >
+                      {bestPosition.symbol}
                     </StockLink>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {topPosition.shares.toLocaleString()} shares
+                      {bestPosition.shares.toLocaleString()} shares
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Current Value</p>
-                    <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                      {stocks[topPosition.symbol] 
-                        ? formatCurrency(topPosition.shares * stocks[topPosition.symbol].price)
-                        : 'Loading...'
-                      }
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Return</p>
+                    <p className="text-xl font-semibold text-green-600 dark:text-green-400">
+                      {formatPercentage(bestPosition.returnPct, { showSign: true })}
                     </p>
                   </div>
                 </div>
@@ -455,7 +367,7 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
             )}
 
             {/* Worst Performer */}
-            {worstPosition && (
+            {worstPosition && bestPosition.symbol !== worstPosition.symbol && (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
@@ -467,7 +379,10 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <StockLink ticker={worstPosition.symbol} className="text-2xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
+                    <StockLink 
+                      ticker={worstPosition.symbol} 
+                      className="text-2xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+                    >
                       {worstPosition.symbol}
                     </StockLink>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -475,24 +390,65 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Current Value</p>
-                    <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                      {stocks[worstPosition.symbol] 
-                        ? formatCurrency(worstPosition.shares * stocks[worstPosition.symbol].price)
-                        : 'Loading...'
-                      }
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Return</p>
+                    <p className="text-xl font-semibold text-red-600 dark:text-red-400">
+                      {formatPercentage(worstPosition.returnPct, { showSign: true })}
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
+            {/* Sector Allocation */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Sector Allocation
+              </h3>
+              <div className="space-y-3">
+                {sectorAllocations.map((allocation, index) => (
+                  <div key={allocation.sector} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className={`w-3 h-3 rounded-full`}
+                        style={{ 
+                          backgroundColor: `hsl(${index * 360 / sectorAllocations.length}, 70%, 50%)`
+                        }}
+                      />
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {allocation.sector}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {allocation.percentage.toFixed(1)}%
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatCurrency(allocation.value)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Portfolio Stats */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Portfolio Stats
+                Portfolio Summary
               </h3>
               <div className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Total Value</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {formatCurrency(totalValue)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Total Invested</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {formatCurrency(invested)}
+                  </span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Positions</span>
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
@@ -500,33 +456,15 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Sector</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Primary Sector</span>
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {portfolioMetrics.primarySector}
+                    {primarySectorAllocation?.sector || 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Tier</span>
-                  <span className={`text-sm font-medium px-2 py-1 rounded ${getTierBadgeStyle(portfolio?.tier || 'Bronze')}`}>
-                    {portfolio?.tier}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Last Update</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Last Refresh</span>
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {formatDate(portfolio?.lastCalculated || Date.now())}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Total Return</span>
-                  <span className={`text-sm font-medium ${portfolioMetrics.totalReturnPercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {formatPercentage(portfolioMetrics.totalReturnPercent, { showSign: true })}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Day Change</span>
-                  <span className={`text-sm font-medium ${portfolioMetrics.dayChangePercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {formatPercentage(portfolioMetrics.dayChangePercent, { showSign: true })}
+                    {lastRefreshAt.toLocaleTimeString()}
                   </span>
                 </div>
               </div>
