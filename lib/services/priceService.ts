@@ -356,6 +356,98 @@ class PriceService {
   }
 
   /**
+   * Fetch multiple stock prices using Polygon.io snapshot API
+   * This uses the v3/snapshot endpoint with ticker.any_of parameter
+   */
+  async getBatchSnapshotPrices(symbols: string[]): Promise<Map<string, CachedPrice>> {
+    if (symbols.length === 0) {
+      return new Map();
+    }
+
+    const pricesMap = new Map<string, CachedPrice>();
+    
+    if (!this.API_KEY) {
+      console.warn('⚠️ No API key, using fallback prices');
+      for (const symbol of symbols) {
+        pricesMap.set(symbol.toUpperCase(), this.getFallbackPrice(symbol, 'current'));
+      }
+      return pricesMap;
+    }
+
+    try {
+      // Create comma-separated list of symbols for the API
+      const tickerList = symbols.map(s => s.toUpperCase()).join(',');
+      const url = `https://api.polygon.io/v3/snapshot?ticker.any_of=${tickerList}&apikey=${this.API_KEY}`;
+      
+      console.log(`📈 Fetching batch prices for ${symbols.length} symbols: ${symbols.join(', ')}`);
+      
+      const response = await fetch(url, {
+        headers: { 'User-Agent': 'leaderboard-app/1.0' }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log(`📊 Polygon v3 snapshot response:`, JSON.stringify(data, null, 2));
+      
+      if (data.status === 'OK' && data.results && Array.isArray(data.results)) {
+        // Process each ticker result
+        for (const tickerData of data.results) {
+          // Get price from session.price or last_trade.price
+          const sessionPrice = tickerData.session?.price;
+          const lastTradePrice = tickerData.last_trade?.price;
+          const currentPrice = sessionPrice || lastTradePrice;
+          
+          if (currentPrice && currentPrice > 0) {
+            const symbol = tickerData.ticker.toUpperCase();
+            const price: CachedPrice = {
+              symbol,
+              date: new Date().toISOString().split('T')[0],
+              price: currentPrice,
+              timestamp: Date.now(),
+              source: 'polygon_snapshot'
+            };
+            
+            pricesMap.set(symbol, price);
+            // Cache the individual price
+            this.setCachedPrice(`current:${symbol}`, price);
+            console.log(`💰 Updated price for ${symbol}: $${price.price}`);
+          }
+        }
+      }
+      
+      // For any symbols that didn't get prices, use fallback
+      for (const symbol of symbols) {
+        const upperSymbol = symbol.toUpperCase();
+        if (!pricesMap.has(upperSymbol)) {
+          console.log(`⚠️ No price data for ${symbol}, using fallback`);
+          pricesMap.set(upperSymbol, this.getFallbackPrice(symbol, 'current'));
+        }
+      }
+      
+      console.log(`✅ Fetched ${pricesMap.size} prices from Polygon.io snapshot API`);
+      return pricesMap;
+      
+    } catch (error) {
+      console.error('❌ Error fetching batch snapshot prices:', error);
+      
+      // Fallback: use individual price fetching or fallback prices
+      for (const symbol of symbols) {
+        try {
+          const price = await this.getCurrentPrice(symbol);
+          pricesMap.set(symbol.toUpperCase(), price);
+        } catch (fallbackError) {
+          pricesMap.set(symbol.toUpperCase(), this.getFallbackPrice(symbol, 'current'));
+        }
+      }
+      
+      return pricesMap;
+    }
+  }
+
+  /**
    * Get cache statistics
    */
   public getCacheStats(): { size: number; maxSize: number; hitRate?: number } {

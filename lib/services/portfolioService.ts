@@ -122,11 +122,11 @@ class PortfolioService {
    */
   private async calculatePortfolioMetrics(portfolioData: MongoPortfolio): Promise<Portfolio | null> {
     try {
-      // Get current prices for all positions
+      // Get current prices for all positions using Polygon.io snapshot API
       const symbols = portfolioData.positions.map(pos => pos.symbol);
-      const pricesMap = await priceService.getBatchCurrentPrices(symbols);
+      const pricesMap = await priceService.getBatchSnapshotPrices(symbols);
 
-      console.log(`💰 Fetched prices for ${pricesMap.size} symbols for ${portfolioData.username}`);
+      console.log(`💰 Fetched snapshot prices for ${pricesMap.size} symbols for ${portfolioData.username}`);
 
       // Calculate position values and metrics
       let totalCurrentValue = 0;

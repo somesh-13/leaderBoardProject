@@ -61,7 +61,7 @@ export async function GET(
         
         // For static data, we need to calculate metrics manually
         const symbols = staticData.positions.map(pos => pos.symbol);
-        const pricesMap = await priceService.getBatchCurrentPrices(symbols);
+        const pricesMap = await priceService.getBatchSnapshotPrices(symbols);
         
         // Calculate position values with real-time prices
         const positions: Position[] = await Promise.all(
@@ -131,8 +131,8 @@ export async function GET(
       console.log(`📊 Using MongoDB data for ${username}`);
     }
 
-    // Calculate sector allocations
-    const pricesMap = await priceService.getBatchCurrentPrices(
+    // Calculate sector allocations using snapshot prices
+    const pricesMap = await priceService.getBatchSnapshotPrices(
       portfolioData.positions.map(pos => pos.symbol)
     );
 
