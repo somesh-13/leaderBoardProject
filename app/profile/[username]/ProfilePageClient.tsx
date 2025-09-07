@@ -47,7 +47,7 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
     isLoading,
     mutate: refreshPortfolio
   } = useSWR<PortfolioSnapshotResponse>(
-    `/api/portfolio/${encodeURIComponent(username)}/snapshot/`,
+    `/api/portfolio/${encodeURIComponent(username)}/snapshot`,
     fetcher,
     {
       refreshInterval: 30000, // Auto-refresh every 30 seconds
