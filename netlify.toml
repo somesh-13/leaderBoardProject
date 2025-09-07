@@ -1,0 +1,16 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[functions]
+  external_node_modules = ["mongodb"]
+
+# Next.js App Router API routes compatibility
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/___netlify-handler"
+  status = 200
+
+# Environment variables for build (add your actual values)
+[build.environment]
+  NODE_ENV = "production"
