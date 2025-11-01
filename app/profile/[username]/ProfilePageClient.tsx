@@ -379,7 +379,7 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
             )}
 
             {/* Worst Performer */}
-            {worstPosition && bestPosition.symbol !== worstPosition.symbol && (
+            {worstPosition && bestPosition && bestPosition.symbol !== worstPosition.symbol && (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
