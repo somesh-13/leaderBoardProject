@@ -1,13 +1,20 @@
 [build]
-  command = "npm run build"
+  command = "npm ci && npm run build"
   publish = ".next"
 
 [functions]
   external_node_modules = ["mongodb"]
+  node_bundler = "esbuild"
 
 # Next.js App Router API routes compatibility
 [[redirects]]
   from = "/api/*"
+  to = "/.netlify/functions/___netlify-handler"
+  status = 200
+
+# Catch-all redirect for Next.js pages
+[[redirects]]
+  from = "/*"
   to = "/.netlify/functions/___netlify-handler"
   status = 200
 
