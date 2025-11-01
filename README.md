@@ -166,7 +166,7 @@ This platform enables traders to:
    # MongoDB Connection
    MONGODB_URI=mongodb://localhost:27017/leaderboard
    # or for MongoDB Atlas:
-   # MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/dbname
+   # MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>
 
    # NextAuth Configuration
    NEXTAUTH_URL=http://localhost:3000
