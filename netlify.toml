@@ -18,6 +18,6 @@
   to = "/.netlify/functions/___netlify-handler"
   status = 200
 
-# Environment variables for build (add your actual values)
-[build.environment]
-  NODE_ENV = "production"
+# Environment variables for build
+# Note: NODE_ENV=production is set automatically by Next.js during build
+# We don't set it here to ensure devDependencies are installed by npm ci
