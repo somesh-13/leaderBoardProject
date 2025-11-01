@@ -17,8 +17,17 @@ const fetcher = async (url: string) => {
   }
   const data: APIResponse<any> = await response.json();
   
+  // Validate response structure
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid API response format');
+  }
+  
   if (!data.success) {
     throw new Error(data.error || 'API request failed');
+  }
+  
+  if (!data.data) {
+    throw new Error('No data received from API');
   }
   
   return data.data;
@@ -173,7 +182,8 @@ export function usePortfolioRealtime(username: string | null, intervalMs: number
     const interval = setInterval(fetchPortfolio, intervalMs);
 
     return () => clearInterval(interval);
-  }, [username, intervalMs, fetchPortfolio]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [username, intervalMs]);
 
 
 

@@ -196,7 +196,8 @@ class PriceService {
     const url = `${this.BASE_URL}/v2/last/trade/${symbol.toUpperCase()}?apikey=${this.API_KEY}`;
     
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'leaderboard-app/1.0' }
+      headers: { 'User-Agent': 'leaderboard-app/1.0' },
+      signal: AbortSignal.timeout(10000) // 10 second timeout
     });
 
     if (!response.ok) {
@@ -230,7 +231,8 @@ class PriceService {
     const url = `${this.BASE_URL}/v2/aggs/ticker/${symbol.toUpperCase()}/range/1/day/${date}/${date}?adjusted=true&limit=1&apikey=${this.API_KEY}`;
     
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'leaderboard-app/1.0' }
+      headers: { 'User-Agent': 'leaderboard-app/1.0' },
+      signal: AbortSignal.timeout(10000) // 10 second timeout
     });
 
     if (!response.ok) {
@@ -265,7 +267,8 @@ class PriceService {
     const url = `${this.BASE_URL}/v2/aggs/ticker/${symbol.toUpperCase()}/range/1/day/${fromDate}/${toDate}?adjusted=true&apikey=${this.API_KEY}`;
     
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'leaderboard-app/1.0' }
+      headers: { 'User-Agent': 'leaderboard-app/1.0' },
+      signal: AbortSignal.timeout(10000) // 10 second timeout
     });
 
     if (!response.ok) {
@@ -382,7 +385,8 @@ class PriceService {
       console.log(`📈 Fetching batch prices for ${symbols.length} symbols: ${symbols.join(', ')}`);
       
       const response = await fetch(url, {
-        headers: { 'User-Agent': 'leaderboard-app/1.0' }
+        headers: { 'User-Agent': 'leaderboard-app/1.0' },
+        signal: AbortSignal.timeout(10000) // 10 second timeout
       });
 
       if (!response.ok) {

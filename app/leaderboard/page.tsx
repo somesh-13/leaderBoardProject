@@ -92,15 +92,15 @@ export default function Leaderboard() {
   const sortedAndFilteredData = useMemo(() => {
     let data = leaderboardData
     
-    // Apply filters
+    // Apply filters - with null checks
     if (filters.sector !== 'all') {
       data = data.filter(entry => entry.sector === filters.sector)
     }
     if (filters.company !== 'all') {
-      data = data.filter(entry => entry.portfolio.includes(filters.company))
+      data = data.filter(entry => entry.portfolio && Array.isArray(entry.portfolio) && entry.portfolio.includes(filters.company))
     }
     if (filters.asset !== 'all') {
-      data = data.filter(entry => entry.portfolio.includes(filters.asset))
+      data = data.filter(entry => entry.portfolio && Array.isArray(entry.portfolio) && entry.portfolio.includes(filters.asset))
     }
     
     // Apply sorting
@@ -469,12 +469,14 @@ export default function Leaderboard() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1 max-w-xs">
-                      {entry.portfolio.slice(0, 6).map((stock, index) => (
+                      {entry.portfolio && Array.isArray(entry.portfolio) ? entry.portfolio.slice(0, 6).map((stock, index) => (
                         <StockLink key={index} ticker={stock} className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors">
                           {stock}
                         </StockLink>
-                      ))}
-                      {entry.portfolio.length > 6 && (
+                      )) : (
+                        <span className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400">No portfolio data</span>
+                      )}
+                      {entry.portfolio && Array.isArray(entry.portfolio) && entry.portfolio.length > 6 && (
                         <span className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
                           +{entry.portfolio.length - 6}
                         </span>

@@ -17,8 +17,8 @@ export async function GET(
   { params }: { params: { username: string } }
 ) {
   try {
-    const username = params.username?.toLowerCase();
-    
+    const username = params.username?.trim();
+
     if (!username) {
       return NextResponse.json({
         success: false,

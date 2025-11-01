@@ -35,9 +35,9 @@ export async function GET(
 ) {
   try {
     const { searchParams } = new URL(request.url);
-    const username = params.username?.toLowerCase();
+    const username = params.username?.trim();
     const atDate = searchParams.get('at'); // YYYY-MM-DD format
-    
+
     if (!username) {
       return NextResponse.json({
         success: false,
@@ -54,12 +54,19 @@ export async function GET(
     
     // Fallback: Use static data if not found in MongoDB
     if (!portfolioData) {
-      const staticData = INITIAL_PORTFOLIOS[username];
+      // Case-insensitive lookup for static data
+      const usernameLower = username.toLowerCase();
+      const staticData = INITIAL_PORTFOLIOS[usernameLower] || INITIAL_PORTFOLIOS[username];
       if (staticData) {
         console.log(`📊 Using static fallback data for ${username}`);
         isFromMongoDB = false;
         
         // For static data, we need to calculate metrics manually
+        // Validate positions array
+        if (!staticData.positions || !Array.isArray(staticData.positions)) {
+          console.warn(`⚠️ Invalid positions array in static data for ${username}`);
+          staticData.positions = [];
+        }
         const symbols = staticData.positions.map(pos => pos.symbol);
         const pricesMap = await priceService.getBatchSnapshotPrices(symbols);
         
@@ -132,6 +139,12 @@ export async function GET(
     }
 
     // Calculate sector allocations using snapshot prices
+    // Validate positions array exists
+    if (!portfolioData.positions || !Array.isArray(portfolioData.positions)) {
+      console.warn(`⚠️ Invalid positions array for ${username}, using empty array`);
+      portfolioData.positions = [];
+    }
+
     const pricesMap = await priceService.getBatchSnapshotPrices(
       portfolioData.positions.map(pos => pos.symbol)
     );

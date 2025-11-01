@@ -32,8 +32,9 @@ class PortfolioService {
   /**
    * Get portfolio collection from MongoDB
    */
-  private getCollection() {
-    return getDatabase().collection<MongoPortfolio>(this.COLLECTION_NAME);
+  private async getCollection() {
+    const db = await getDatabase();
+    return db.collection<MongoPortfolio>(this.COLLECTION_NAME);
   }
 
   /**
@@ -41,8 +42,8 @@ class PortfolioService {
    */
   async getPortfolioByUsername(username: string): Promise<Portfolio | null> {
     try {
-      const collection = this.getCollection();
-      const portfolioData = await collection.findOne({ 
+      const collection = await this.getCollection();
+      const portfolioData = await collection.findOne({
         username: { $regex: new RegExp(`^${username}$`, 'i') }
       });
 
@@ -59,7 +60,8 @@ class PortfolioService {
 
     } catch (error) {
       console.error(`❌ Error fetching portfolio for ${username}:`, error);
-      throw error;
+      // Return null to allow API route to use static fallback instead of crashing
+      return null;
     }
   }
 
@@ -68,7 +70,7 @@ class PortfolioService {
    */
   async getAllPortfolios(): Promise<Portfolio[]> {
     try {
-      const collection = this.getCollection();
+      const collection = await this.getCollection();
       const portfolios = await collection.find({}).toArray();
 
       console.log(`📊 Found ${portfolios.length} portfolios in database`);
@@ -91,7 +93,7 @@ class PortfolioService {
    */
   async savePortfolio(portfolio: Omit<MongoPortfolio, '_id' | 'createdAt' | 'updatedAt'>): Promise<boolean> {
     try {
-      const collection = this.getCollection();
+      const collection = await this.getCollection();
       const now = new Date();
 
       const result = await collection.updateOne(
@@ -122,6 +124,12 @@ class PortfolioService {
    */
   private async calculatePortfolioMetrics(portfolioData: MongoPortfolio): Promise<Portfolio | null> {
     try {
+      // Validate positions array
+      if (!portfolioData.positions || !Array.isArray(portfolioData.positions)) {
+        console.warn(`⚠️ Invalid positions array for ${portfolioData.username}`);
+        portfolioData.positions = [];
+      }
+
       // Get current prices for all positions using Polygon.io snapshot API
       const symbols = portfolioData.positions.map(pos => pos.symbol);
       const pricesMap = await priceService.getBatchSnapshotPrices(symbols);
@@ -267,8 +275,8 @@ class PortfolioService {
    */
   async initializeSamplePortfolios(): Promise<void> {
     try {
-      const collection = this.getCollection();
-      
+      const collection = await this.getCollection();
+
       // Check if portfolios already exist
       const existingCount = await collection.countDocuments();
       if (existingCount > 0) {

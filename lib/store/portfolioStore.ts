@@ -252,7 +252,7 @@ export const usePortfolioStore = create<PortfolioStore>()(
           get().fetchPerformanceDataForDate(performanceSinceDate)
         },
 
-        // Data Fetching Actions - Direct Polygon API calls
+        // Data Fetching Actions - Use efficient batch API from priceService
         fetchStockPrices: async (symbols) => {
           const uniqueSymbols = Array.from(new Set(symbols)).filter(Boolean)
           if (uniqueSymbols.length === 0) return
@@ -260,102 +260,70 @@ export const usePortfolioStore = create<PortfolioStore>()(
           set({ stocksLoading: true, stocksError: null })
 
           try {
-            console.log(`🔄 Fetching prices DIRECTLY from Polygon for ${uniqueSymbols.length} symbols:`, uniqueSymbols)
+            console.log(`🔄 Fetching prices via priceService batch API for ${uniqueSymbols.length} symbols:`, uniqueSymbols)
 
-            const API_KEY = process.env.NEXT_PUBLIC_POLYGON_API_KEY
-            if (!API_KEY) {
-              throw new Error('Polygon API key not found in environment variables')
-            }
+            // Import priceService dynamically to avoid circular dependencies
+            const { priceService } = await import('@/lib/services/priceService')
+
+            // Use batch snapshot API which fetches all prices in parallel
+            const pricesMap = await priceService.getBatchSnapshotPrices(uniqueSymbols)
 
             const stockData: Record<string, { symbol: string; price: number; change: number; changePercent: number; lastUpdated: number; volume: number; previousClose: number }> = {}
 
-            // Fetch each stock price directly from Polygon API
-            for (const symbol of uniqueSymbols) {
+            // Calculate day changes for each symbol in parallel
+            const dayChangePromises = uniqueSymbols.map(async (symbol) => {
+              const priceData = pricesMap.get(symbol.toUpperCase())
+              if (!priceData) return null
+
               try {
-                console.log(`🔍 Fetching ${symbol} directly from Polygon...`)
-                
-                const response = await fetch(
-                  `https://api.polygon.io/v2/last/trade/${symbol}?apikey=${API_KEY}`,
-                  {
-                    headers: {
-                      'User-Agent': 'leaderboard-app/1.0'
-                    }
-                  }
-                )
-
-                if (!response.ok) {
-                  throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-                }
-
-                const data = await response.json()
-                
-                if ((data.status === 'OK' || data.status === 'DELAYED') && data.results && data.results.p > 0) {
-                  const price = data.results.p
-                  
-                  // Calculate change (simplified - using 2% random for demo)
-                  const changePercent = (Math.random() - 0.5) * 4 // -2% to +2%
-                  
-                  stockData[symbol] = {
-                    symbol: symbol.toUpperCase(),
-                    price: price,
-                    change: changePercent,
-                    changePercent: changePercent,
-                    lastUpdated: Date.now(),
-                    volume: data.results.s || 0,
-                    previousClose: price * (1 - changePercent / 100)
-                  }
-                  
-                  const dataType = data.status === 'DELAYED' ? 'delayed' : 'real-time'
-                  console.log(`✅ Got ${dataType} price for ${symbol}: $${price.toFixed(2)} from Polygon`)
-                  
-                } else {
-                  console.warn(`⚠️ Invalid data from Polygon for ${symbol}:`, data.status)
-                  
-                  // Use fallback for invalid responses
-                  stockData[symbol] = {
-                    symbol: symbol.toUpperCase(),
-                    price: 100,
-                    change: 0,
-                    changePercent: 0,
-                    lastUpdated: Date.now(),
-                    volume: 0,
-                    previousClose: 100
-                  }
-                }
-
-                // Add delay to respect rate limits (5 requests per minute for free tier)
-                await new Promise(resolve => setTimeout(resolve, 12000)) // 12 second delay
-
-              } catch (error) {
-                console.error(`❌ Error fetching ${symbol} from Polygon:`, error)
-                
-                // Provide fallback data
-                stockData[symbol] = {
+                // Get day change calculation
+                const dayChange = await priceService.calculateDayChange(symbol, 1)
+                return {
                   symbol: symbol.toUpperCase(),
-                  price: 100,
+                  price: priceData.price,
+                  change: dayChange.dayChangeValue,
+                  changePercent: dayChange.dayChangePct,
+                  lastUpdated: priceData.timestamp,
+                  volume: 0, // Volume not available in current API
+                  previousClose: dayChange.priorClosePrice
+                }
+              } catch (error) {
+                console.warn(`⚠️ Could not calculate day change for ${symbol}, using fallback`)
+                return {
+                  symbol: symbol.toUpperCase(),
+                  price: priceData.price,
                   change: 0,
                   changePercent: 0,
-                  lastUpdated: Date.now(),
+                  lastUpdated: priceData.timestamp,
                   volume: 0,
-                  previousClose: 100
+                  previousClose: priceData.price
                 }
               }
-            }
-            
-            set({ 
+            })
+
+            const results = await Promise.all(dayChangePromises)
+
+            // Build stockData object from results
+            results.forEach((result) => {
+              if (result) {
+                stockData[result.symbol] = result
+              }
+            })
+
+            set({
               stocks: { ...get().stocks, ...stockData },
               lastStockUpdate: Date.now(),
               stocksLoading: false,
               stocksError: null
             })
-            
-            console.log(`✅ Successfully fetched ${Object.keys(stockData).length} stock prices directly from Polygon`)
-            
+
+            console.log(`✅ Successfully fetched ${Object.keys(stockData).length} stock prices via priceService`)
+
           } catch (error) {
-            console.error('❌ Error in direct Polygon fetch:', error)
-            set({ 
-              stocksLoading: false, 
-              stocksError: error instanceof Error ? error.message : 'Unknown error' 
+            console.error('❌ Error fetching prices via priceService:', error)
+            set({
+              stocksLoading: false,
+              stocksError: error instanceof Error ? error.message : 'Unknown error'
             })
           }
         },
@@ -368,14 +336,27 @@ export const usePortfolioStore = create<PortfolioStore>()(
             const updatedPortfolios: Record<string, Portfolio> = {}
 
             Object.entries(portfolios).forEach(([userId, portfolio]) => {
+              // Extract historical prices from stock data
+              const historicalPrices: Record<string, number> = {}
+              portfolio.positions.forEach(position => {
+                const stockData = stocks[position.symbol]
+                if (stockData?.historicalPrice) {
+                  historicalPrices[position.symbol] = stockData.historicalPrice
+                }
+              })
+              
               // Calculate updated metrics using current stock data (including historical prices)
               const metrics = calculatePortfolioMetrics({
                 positions: portfolio.positions,
-                stockPrices: stocks
+                stockPrices: stocks,
+                historicalPrices
               })
 
-              // Use since-date performance if available, otherwise fall back to total return
-              const performanceReturn = metrics.totalSinceDatePercent !== undefined 
+              // Use since-date performance if historical prices are available, otherwise fall back to total return
+              const hasHistoricalPrices = Object.keys(historicalPrices).length > 0
+              const performanceReturn = hasHistoricalPrices && 
+                                        metrics.totalSinceDatePercent !== undefined &&
+                                        !isNaN(metrics.totalSinceDatePercent)
                 ? metrics.totalSinceDatePercent 
                 : metrics.totalReturnPercent
 
@@ -478,7 +459,7 @@ export const usePortfolioStore = create<PortfolioStore>()(
           
           return leaderboard.filter(entry => {
             if (filters.sector !== 'all' && entry.sector !== filters.sector) return false
-            if (filters.asset !== 'all' && !entry.portfolio.includes(filters.asset)) return false
+            if (filters.asset !== 'all' && (!entry.portfolio || !Array.isArray(entry.portfolio) || !entry.portfolio.includes(filters.asset))) return false
             if (filters.tier && entry.tier !== filters.tier) return false
             if (filters.minReturn !== undefined && entry.return < filters.minReturn) return false
             if (filters.maxReturn !== undefined && entry.return > filters.maxReturn) return false

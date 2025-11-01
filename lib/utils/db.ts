@@ -29,7 +29,7 @@ export interface CreateUserInput {
  */
 export async function getUserFromDb(email: string): Promise<User | null> {
   try {
-    const users = getUsersCollection();
+    const users = await getUsersCollection();
     const user = await users.findOne({ email: email.toLowerCase() });
     
     if (!user) return null;
@@ -52,7 +52,7 @@ export async function getUserFromDb(email: string): Promise<User | null> {
  */
 export async function getUserByUsername(username: string): Promise<User | null> {
   try {
-    const users = getUsersCollection();
+    const users = await getUsersCollection();
     const user = await users.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
     
     if (!user) return null;
@@ -74,7 +74,7 @@ export async function getUserByUsername(username: string): Promise<User | null> 
  */
 export async function getUserById(id: string): Promise<User | null> {
   try {
-    const users = getUsersCollection();
+    const users = await getUsersCollection();
     const user = await users.findOne({ _id: new ObjectId(id) });
     
     if (!user) return null;
@@ -96,8 +96,8 @@ export async function getUserById(id: string): Promise<User | null> {
  */
 export async function createUserInDb(userData: CreateUserInput): Promise<User> {
   try {
-    const users = getUsersCollection();
-    
+    const users = await getUsersCollection();
+
     // Check if user already exists
     const existingUser = await getUserFromDb(userData.email);
     if (existingUser) {
@@ -142,7 +142,7 @@ export async function createUserInDb(userData: CreateUserInput): Promise<User> {
  */
 export async function updateUserLastLogin(userId: string): Promise<boolean> {
   try {
-    const users = getUsersCollection();
+    const users = await getUsersCollection();
     const result = await users.updateOne(
       { _id: new ObjectId(userId) },
       { 
@@ -168,7 +168,7 @@ export async function updateUserLastLogin(userId: string): Promise<boolean> {
  */
 export async function updateUserEmailVerification(userId: string, verified: boolean): Promise<boolean> {
   try {
-    const users = getUsersCollection();
+    const users = await getUsersCollection();
     const result = await users.updateOne(
       { _id: new ObjectId(userId) },
       { 
@@ -227,7 +227,7 @@ export async function getUserStats(): Promise<{
   verifiedUsers: number;
 }> {
   try {
-    const users = getUsersCollection();
+    const users = await getUsersCollection();
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 

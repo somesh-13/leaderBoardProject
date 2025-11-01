@@ -91,7 +91,22 @@ export function calculatePortfolioMetrics(
   positions.forEach(position => {
     const stockData = stockPrices[position.symbol]
     if (!stockData) {
-      console.warn(`⚠️ No stock data found for ${position.symbol}`)
+      console.warn(`⚠️ No stock data found for ${position.symbol}, using fallback`)
+      // Use fallback data: use avgPrice as current price if stock data is missing
+      const fallbackStockData: StockData = {
+        symbol: position.symbol,
+        price: position.avgPrice,
+        change: 0,
+        changePercent: 0,
+        previousClose: position.avgPrice,
+        lastUpdated: Date.now()
+      }
+      const historicalPrice = historicalPrices[position.symbol]
+      const metrics = calculatePositionMetrics(position, fallbackStockData, historicalPrice)
+      positionMetrics.push(metrics)
+      totalValue += metrics.currentValue
+      totalInvested += metrics.invested
+      totalDayChange += metrics.dayChangeValue
       return
     }
     
@@ -110,11 +125,19 @@ export function calculatePortfolioMetrics(
   const dayChangePercent = totalValue > 0 ? (totalDayChange / (totalValue - totalDayChange)) * 100 : 0
   
   // Calculate since-date performance for the portfolio
-  let totalSinceDateValue = 0
+  // Sum all gains since the historical date
+  let totalSinceDateGain = 0
+  let totalSinceDateBaseValue = 0
   positionMetrics.forEach(metrics => {
-    totalSinceDateValue += metrics.sinceDateGain
+    totalSinceDateGain += metrics.sinceDateGain
+    // Calculate base value: currentValue - gain = original value at historical date
+    const baseValue = metrics.currentValue - metrics.sinceDateGain
+    totalSinceDateBaseValue += baseValue
   })
-  const totalSinceDatePercent = totalValue > 0 ? (totalSinceDateValue / (totalValue - totalSinceDateValue)) * 100 : 0
+  // Calculate percentage: gain / base value * 100
+  const totalSinceDatePercent = totalSinceDateBaseValue > 0 
+    ? (totalSinceDateGain / totalSinceDateBaseValue) * 100 
+    : 0
   
   // Find best and worst performers based on since-date performance
   const sortedByReturn = [...positionMetrics].sort((a, b) => b.sinceDateGainPercent - a.sinceDateGainPercent)
@@ -132,7 +155,7 @@ export function calculatePortfolioMetrics(
     totalInvested,
     totalReturn,
     totalReturnPercent,
-    totalSinceDateReturn: totalSinceDateValue,
+    totalSinceDateReturn: totalSinceDateGain,
     totalSinceDatePercent,
     dayChange: totalDayChange,
     dayChangePercent,

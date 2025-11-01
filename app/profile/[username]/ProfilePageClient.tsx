@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { ArrowLeft, TrendingUp, TrendingDown, Calendar, Briefcase, RefreshCw } from 'lucide-react'
@@ -25,37 +25,47 @@ const fetcher = async (url: string): Promise<PortfolioSnapshotResponse> => {
     throw new Error(`HTTP error! status: ${response.status}`)
   }
   const data: APIResponse<PortfolioSnapshotResponse> = await response.json()
-  
+
+  // Validate response structure
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid API response format')
+  }
+
   if (!data.success) {
     throw new Error(data.error || 'API request failed')
   }
-  
+
   if (!data.data) {
-    throw new Error('No data received')
+    throw new Error('No data received from API')
   }
-  
+
   return data.data
 }
 
 export default function ProfilePageClient({ username }: ProfilePageClientProps) {
   const [lastRefreshAt, setLastRefreshAt] = useState<Date>(new Date())
 
+  // Generate SWR key
+  const swrKey = username ? `/api/portfolio/${encodeURIComponent(username)}/snapshot` : null;
+
   // Fetch portfolio snapshot from MongoDB-enabled API
-  const { 
-    data: portfolioSnapshot, 
-    error, 
+  const {
+    data: portfolioSnapshot,
+    error,
     isLoading,
     mutate: refreshPortfolio
   } = useSWR<PortfolioSnapshotResponse>(
-    `/api/portfolio/${encodeURIComponent(username)}/snapshot`,
+    swrKey,
     fetcher,
     {
-      refreshInterval: 30000, // Auto-refresh every 30 seconds
-      revalidateOnFocus: true,
-      revalidateOnReconnect: true,
-      errorRetryCount: 3,
-      errorRetryInterval: 5000,
-      onSuccess: () => setLastRefreshAt(new Date())
+      refreshInterval: 0,           // No automatic polling
+      revalidateOnFocus: false,     // No refetch on tab focus
+      revalidateOnReconnect: false, // No refetch on reconnect
+      dedupingInterval: 2000,       // Short dedup interval (2s) to allow manual refreshes
+      shouldRetryOnError: false,    // No auto-retry
+      onSuccess: () => {
+        setLastRefreshAt(new Date())
+      }
     }
   )
 
@@ -63,14 +73,6 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
     await refreshPortfolio()
     setLastRefreshAt(new Date())
   }
-
-  console.log('🔍 ProfilePageClient Debug:', {
-    username,
-    portfolioSnapshot: portfolioSnapshot ? 'Found' : 'Not found',
-    isLoading,
-    error: error?.message,
-    lastRefresh: lastRefreshAt.toLocaleTimeString()
-  })
 
   if (isLoading) {
     return (
@@ -129,21 +131,25 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
 
   // Calculate additional metrics
   const totalReturn = totalValue - invested
-  const totalPositions = positions.length
+  const totalPositions = positions?.length || 0
 
-  // Find best and worst performing positions
-  const bestPosition = positions.reduce((best: Position, pos: Position) => 
-    (pos.returnPct > (best?.returnPct || -Infinity)) ? pos : best, positions[0]
-  )
+  // Find best and worst performing positions - with null checks
+  const bestPosition = positions && positions.length > 0
+    ? positions.reduce((best: Position, pos: Position) => 
+        (pos.returnPct > (best?.returnPct || -Infinity)) ? pos : best, positions[0]
+      )
+    : null
 
-  const worstPosition = positions.reduce((worst: Position, pos: Position) => 
-    (pos.returnPct < (worst?.returnPct || Infinity)) ? pos : worst, positions[0]
-  )
+  const worstPosition = positions && positions.length > 0
+    ? positions.reduce((worst: Position, pos: Position) => 
+        (pos.returnPct < (worst?.returnPct || Infinity)) ? pos : worst, positions[0]
+      )
+    : null
 
-  // Calculate primary sector value
-  const primarySectorAllocation = sectorAllocations[0]
-
-  // Remove unused function
+  // Calculate primary sector value - with null check
+  const primarySectorAllocation = sectorAllocations && sectorAllocations.length > 0 
+    ? sectorAllocations[0] 
+    : null
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', { 
@@ -286,7 +292,7 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {positions.map((position) => (
+                    {positions && positions.length > 0 ? positions.map((position) => (
                       <tr key={position.symbol} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-col">
@@ -324,7 +330,13 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )) : (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                          No positions found
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -405,7 +417,7 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                 Sector Allocation
               </h3>
               <div className="space-y-3">
-                {sectorAllocations.map((allocation, index) => (
+                {sectorAllocations && sectorAllocations.length > 0 ? sectorAllocations.map((allocation, index) => (
                   <div key={allocation.sector} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div 
@@ -427,7 +439,11 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                       </div>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                    No sector allocation data available
+                  </div>
+                )}
               </div>
             </div>
 
@@ -458,7 +474,7 @@ export default function ProfilePageClient({ username }: ProfilePageClientProps) 
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Primary Sector</span>
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {primarySectorAllocation?.sector || 'N/A'}
+                    {primarySectorAllocation?.sector || portfolioSnapshot.primarySector || 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between">

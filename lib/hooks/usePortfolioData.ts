@@ -7,7 +7,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { usePortfolioStore } from '@/lib/store/portfolioStore'
-import { calculateCompletePortfolio } from '@/lib/utils/portfolioCalculations'
+import { calculateCompletePortfolio, calculatePortfolioMetrics } from '@/lib/utils/portfolioCalculations'
 import { Position, Portfolio, LeaderboardEntry } from '@/lib/types/portfolio'
 import { INITIAL_PORTFOLIOS } from '@/lib/data/initialPortfolios'
 import { useAllPortfolioPrices } from '@/lib/hooks/useLivePrices'
@@ -173,7 +173,8 @@ export function useLeaderboardData(): {
     stocksLoading,
     leaderboard: rawLeaderboard,
     portfolios,
-    stocks
+    stocks,
+    performanceSinceDate
   } = usePortfolioStore()
 
   // Fetch live prices for all portfolio symbols
@@ -192,69 +193,82 @@ export function useLeaderboardData(): {
       console.log('🔄 Generating leaderboard with dynamic calculations from portfolios')
       
       const calculatedEntries = Object.values(portfolios).map(portfolio => {
-        // Calculate portfolio metrics dynamically (same logic as profile pages)
-        let totalCurrentValue = 0
-        let totalInvestedAmount = 0
-        let totalDayChange = 0
-        const sectorCounts: Record<string, number> = {}
+        // Use calculatePortfolioMetrics which properly handles historical prices
+        const metrics = calculatePortfolioMetrics({
+          positions: portfolio.positions,
+          stockPrices: stocks
+        })
+        
+        // Extract historical prices from stock data for use in calculations
+        const historicalPrices: Record<string, number> = {}
+        portfolio.positions.forEach(position => {
+          const stockData = stocks[position.symbol]
+          if (stockData?.historicalPrice) {
+            historicalPrices[position.symbol] = stockData.historicalPrice
+          }
+        })
+        
+        if (Object.keys(historicalPrices).length > 0) {
+          console.log(`📊 Using historical prices for ${portfolio.username}:`, Object.keys(historicalPrices).length, 'positions')
+        }
+        
+        // Recalculate with explicit historical prices to ensure they're used
+        const metricsWithHistorical = calculatePortfolioMetrics({
+          positions: portfolio.positions,
+          stockPrices: stocks,
+          historicalPrices
+        })
+
+        // Use since-date performance if historical prices are available, otherwise total return
+        const hasHistoricalPrices = Object.keys(historicalPrices).length > 0
+        const sinceDatePercent = metricsWithHistorical.totalSinceDatePercent
+        const returnPercent = hasHistoricalPrices && 
+                              sinceDatePercent !== undefined && 
+                              !isNaN(sinceDatePercent)
+          ? sinceDatePercent
+          : metricsWithHistorical.totalReturnPercent
+
+        // Find primary stock (largest position by current value)
         let largestPositionValue = 0
         let primaryStock = portfolio.positions[0]?.symbol || 'N/A'
-
         portfolio.positions.forEach(position => {
           const stockData = stocks[position.symbol]
           const currentPrice = stockData?.price || 0
-          const avgPrice = position.avgPrice
-          const shares = position.shares
-
-          // Calculate values
-          const currentValue = shares * currentPrice
-          const investedAmount = shares * avgPrice
-          const dayChangeAmount = stockData?.change ? shares * stockData.change : 0
-
-          // Accumulate totals
-          totalCurrentValue += currentValue
-          totalInvestedAmount += investedAmount
-          totalDayChange += dayChangeAmount
-
-          // Track sectors
-          if (position.sector) {
-            sectorCounts[position.sector] = (sectorCounts[position.sector] || 0) + 1
-          }
-
-          // Find primary stock (largest position by current value)
+          const currentValue = position.shares * currentPrice
           if (currentValue > largestPositionValue) {
             largestPositionValue = currentValue
             primaryStock = position.symbol
           }
         })
 
-        // Calculate percentages
-        const totalReturn = totalCurrentValue - totalInvestedAmount
-        const totalReturnPercent = totalInvestedAmount > 0 ? (totalReturn / totalInvestedAmount) * 100 : 0
-        // const dayChangePercent = totalCurrentValue > 0 ? (totalDayChange / (totalCurrentValue - totalDayChange)) * 100 : 0
-
-        // Find primary sector
+        // Track sectors
+        const sectorCounts: Record<string, number> = {}
+        portfolio.positions.forEach(position => {
+          if (position.sector) {
+            sectorCounts[position.sector] = (sectorCounts[position.sector] || 0) + 1
+          }
+        })
         const primarySector = Object.entries(sectorCounts)
-          .sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A'
+          .sort(([,a], [,b]) => b - a)[0]?.[0] || portfolio.sector || 'N/A'
 
         // Calculate tier based on return percentage
         let tier: 'S' | 'A' | 'B' | 'C' = 'C'
-        if (totalReturnPercent >= 40) tier = 'S'
-        else if (totalReturnPercent >= 30) tier = 'A'
-        else if (totalReturnPercent >= 20) tier = 'B'
+        if (returnPercent >= 40) tier = 'S'
+        else if (returnPercent >= 30) tier = 'A'
+        else if (returnPercent >= 20) tier = 'B'
         else tier = 'C'
 
         return {
           rank: 0, // Will be set after sorting
           username: portfolio.username,
-          return: totalReturnPercent, // Use calculated return
-          calculatedReturn: totalReturnPercent, // Also set calculatedReturn for compatibility
+          return: returnPercent,
+          calculatedReturn: returnPercent, // Also set calculatedReturn for compatibility
           tier,
           sector: primarySector,
           primaryStock,
           portfolio: portfolio.positions.map(p => p.symbol),
-          totalValue: totalCurrentValue,
-          dayChange: totalDayChange,
+          totalValue: metricsWithHistorical.totalValue,
+          dayChange: metricsWithHistorical.dayChange,
           positions: portfolio.positions
         }
       })
@@ -265,6 +279,7 @@ export function useLeaderboardData(): {
         .map((entry, index) => ({ ...entry, rank: index + 1 }))
       
       console.log('✅ Generated leaderboard with dynamic calculations:', sortedEntries.length, 'entries')
+      console.log('📊 Using historical prices for', Object.keys(calculatedEntries[0]?.positions || []).length, 'portfolios')
       return sortedEntries
     }
     
@@ -295,7 +310,7 @@ export function useLeaderboardData(): {
     }
     
     return sorted
-  }, [getSortedLeaderboard, rawLeaderboard.length, portfolios, stocks])
+  }, [getSortedLeaderboard, rawLeaderboard.length, portfolios, stocks, performanceSinceDate])
 
   const loading = leaderboardLoading || portfoliosLoading || stocksLoading || pricesLoading
   const error = leaderboardError || pricesError

@@ -113,7 +113,7 @@ export interface CachedPrice {
   date: string; // YYYY-MM-DD
   price: number;
   timestamp: number;
-  source: 'polygon' | 'cache' | 'fallback';
+  source: 'polygon' | 'polygon_snapshot' | 'cache' | 'fallback';
 }
 
 // Trade Data Types (for future implementation)
