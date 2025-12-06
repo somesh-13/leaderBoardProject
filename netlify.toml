@@ -2,22 +2,12 @@
   command = "npm ci && npm run build"
   publish = ".next"
 
+[build.environment]
+  NODE_VERSION = "18"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
 [functions]
   external_node_modules = ["mongodb"]
   node_bundler = "esbuild"
-
-# Next.js App Router API routes compatibility
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/___netlify-handler"
-  status = 200
-
-# Catch-all redirect for Next.js pages
-[[redirects]]
-  from = "/*"
-  to = "/.netlify/functions/___netlify-handler"
-  status = 200
-
-# Environment variables for build
-# Note: NODE_ENV=production is set automatically by Next.js during build
-# We don't set it here to ensure devDependencies are installed by npm ci
