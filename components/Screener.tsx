@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { getCurrentPrice } from '@/lib/polygon'
+import { useState, useEffect } from 'react'
 import { TrendingUp, TrendingDown, Search } from 'lucide-react'
 import StockLink from '@/components/navigation/StockLink'
 
@@ -23,41 +22,19 @@ export default function Screener() {
   const [filter, setFilter] = useState<'all' | 'gainers' | 'losers'>('all')
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Trending tickers to fetch - memoized to prevent recreating on every render
-  const trendingTickers = useMemo(() => [
-    { name: 'S&P 500', symbol: 'SPY', sector: 'Index', type: 'Index' as const },
-    { name: 'NASDAQ', symbol: 'QQQ', sector: 'Index', type: 'Index' as const },
-    { name: 'Apple', symbol: 'AAPL', sector: 'Technology', type: 'Stock' as const },
-    { name: 'Tesla', symbol: 'TSLA', sector: 'Automotive', type: 'Stock' as const },
-    { name: 'Microsoft', symbol: 'MSFT', sector: 'Technology', type: 'Stock' as const },
-    { name: 'Meta', symbol: 'META', sector: 'Technology', type: 'Stock' as const },
-    { name: 'NVIDIA', symbol: 'NVDA', sector: 'Technology', type: 'Stock' as const },
-    { name: 'Amazon', symbol: 'AMZN', sector: 'E-commerce', type: 'Stock' as const },
-    { name: 'Google', symbol: 'GOOGL', sector: 'Technology', type: 'Stock' as const },
-    { name: 'Netflix', symbol: 'NFLX', sector: 'Entertainment', type: 'Stock' as const },
-    { name: 'Palantir', symbol: 'PLTR', sector: 'Technology', type: 'Stock' as const },
-    { name: 'Rocket Lab', symbol: 'RKLB', sector: 'Aerospace', type: 'Stock' as const },
-  ], [])
-
   useEffect(() => {
     const fetchScreenerData = async () => {
       setIsLoading(true)
       
       try {
-        const updatedAssets = await Promise.all(
-          trendingTickers.map(async (ticker) => {
-            const { price, change } = await getCurrentPrice(ticker.symbol)
-            return {
-              ...ticker,
-              price,
-              change,
-              changePercent: change, // getCurrentPrice returns change as percentage
-              volume: Math.floor(Math.random() * 10000000), // Mock volume for now
-              marketCap: `$${(Math.random() * 1000 + 100).toFixed(1)}B`
-            }
-          })
-        )
-        setAssets(updatedAssets)
+        const response = await fetch('/api/screener')
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch screener data')
+        }
+        
+        const data = await response.json()
+        setAssets(data.results || [])
       } catch (error) {
         console.error('Error fetching screener data:', error)
       } finally {
@@ -66,7 +43,7 @@ export default function Screener() {
     }
 
     fetchScreenerData()
-  }, [trendingTickers])
+  }, [])
 
   // Filter assets based on selected filter and search term
   const filteredAssets = assets
@@ -107,7 +84,7 @@ export default function Screener() {
             Market Screener
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Real-time data for trending stocks and market indices
+            Real-time data for crypto mining and AI infrastructure stocks
           </p>
         </div>
 
@@ -210,9 +187,8 @@ export default function Screener() {
                     </td>
                     <td className="py-4 px-6 text-right">
                       <span className={`px-2 py-1 text-xs rounded-full ${
-                        asset.type === 'Index' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' :
-                        asset.sector === 'Technology' ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200' :
-                        asset.sector === 'Aerospace' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200' :
+                        asset.sector === 'Crypto Mining' ? 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200' :
+                        asset.sector === 'AI Infrastructure' ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200' :
                         'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                       }`}>
                         {asset.sector}
