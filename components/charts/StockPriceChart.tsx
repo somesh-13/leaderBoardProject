@@ -114,7 +114,9 @@ export default function StockPriceChart({
         displayColors: false,
         callbacks: {
           title: (tooltipItems: TooltipItem<'line'>[]) => {
-            const date = new Date(tooltipItems[0].parsed.x)
+            const xValue = tooltipItems[0].parsed.x
+            if (xValue === null) return ''
+            const date = new Date(xValue)
             return date.toLocaleDateString('en-US', {
               weekday: 'short',
               year: 'numeric',
@@ -126,6 +128,7 @@ export default function StockPriceChart({
           },
           label: (tooltipItem: TooltipItem<'line'>) => {
             const value = tooltipItem.parsed.y
+            if (value === null) return ''
             const dataPoint = data[tooltipItem.dataIndex]
             const lines = [
               `Price: $${value.toFixed(2)}`

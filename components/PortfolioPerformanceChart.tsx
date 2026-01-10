@@ -263,8 +263,9 @@ export default function PortfolioPerformanceChart({ user, className = "" }: Port
             }
             return '';
           },
-          label: (context: { parsed: { y: number } }) => {
+          label: (context: { parsed: { y: number | null } }) => {
             const value = context.parsed.y;
+            if (value === null) return '';
             if (viewMode === 'value') {
               return `Portfolio Value: $${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             } else {
