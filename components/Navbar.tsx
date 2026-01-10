@@ -34,9 +34,7 @@ export default function Navbar() {
   }, [userMenuOpen])
 
   const navigation = [
-    { name: 'Home', href: '/' },
-    { name: 'Leaderboard', href: '/leaderboard' },
-    { name: 'Screener', href: '/screener' },
+    { name: 'Screener', href: '/' },
     { name: 'My Profile', href: '/profile' },
     // { name: 'Terminal', href: '/terminal' }, // Hidden for now
   ]

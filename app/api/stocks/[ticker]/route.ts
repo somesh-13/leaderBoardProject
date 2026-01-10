@@ -74,7 +74,15 @@ const companyNames: Record<string, string> = {
   MU: 'Micron Technology, Inc.',
   NU: 'Nu Holdings Ltd.',
   SPY: 'SPDR S&P 500 ETF Trust',
-  QQQ: 'Invesco QQQ Trust'
+  QQQ: 'Invesco QQQ Trust',
+  // Crypto Mining & AI Infrastructure
+  WULF: 'TeraWulf Inc.',
+  CIFR: 'Cipher Mining Inc.',
+  CLSK: 'CleanSpark, Inc.',
+  CRWV: 'CoreWeave',
+  MARA: 'Marathon Digital Holdings, Inc.',
+  BITF: 'Bitfarms Ltd.',
+  IREN: 'Iris Energy Limited'
 }
 
 async function fetchPolygonSnapshot(ticker: string): Promise<StockDetailData | null> {
@@ -201,9 +209,10 @@ function generateMockStockData(ticker: string): StockDetailData {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { ticker: string } }
+  context: { params: Promise<{ ticker: string }> }
 ) {
-  const ticker = params.ticker.toUpperCase()
+  const { ticker: rawTicker } = await context.params
+  const ticker = rawTicker.toUpperCase()
   const { searchParams } = new URL(request.url)
   const timeRange = (searchParams.get('timeRange') as TimeRange) || '1M'
   const includeHistory = searchParams.get('includeHistory') !== 'false'

@@ -14,10 +14,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { username: string } }
+  context: { params: Promise<{ username: string }> }
 ) {
   try {
-    const username = params.username?.trim();
+    const { username: rawUsername } = await context.params
+    const username = rawUsername?.trim();
 
     if (!username) {
       return NextResponse.json({

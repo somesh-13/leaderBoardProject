@@ -31,11 +31,12 @@ interface PortfolioSnapshotResponse extends PortfolioSnapshot {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { username: string } }
+  context: { params: Promise<{ username: string }> }
 ) {
   try {
     const { searchParams } = new URL(request.url);
-    const username = params.username?.trim();
+    const { username: rawUsername } = await context.params
+    const username = rawUsername?.trim();
     const atDate = searchParams.get('at'); // YYYY-MM-DD format
 
     if (!username) {
