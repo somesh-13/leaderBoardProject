@@ -8,6 +8,10 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+[context.production.environment]
+  NPM_FLAGS = ""
+  NPM_CONFIG_REGISTRY = "https://registry.npmjs.org/"
+
 [functions]
   external_node_modules = ["mongodb"]
   node_bundler = "esbuild"
