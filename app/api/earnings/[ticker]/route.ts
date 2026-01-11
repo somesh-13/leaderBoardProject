@@ -189,15 +189,24 @@ function generateRevenueData(ticker: string): RevenueEstimatesData {
     let nextYear = latestData.year
     let nextQuarter = latestData.quarter + 1
     
-    // Add 6 projected quarters
-    for (let i = 0; i < 6; i++) {
+    // Add enough projected quarters to always include ~2 years of future periods,
+    // even when the latest real data is far behind the current date.
+    const targetFutureQuarters = 8
+    let addedFutureQuarters = 0
+    let safetyCounter = 0
+    const safetyLimit = 32 // prevents infinite loops if dates go weird
+    
+    while (addedFutureQuarters < targetFutureQuarters && safetyCounter < safetyLimit) {
+      safetyCounter++
+      
       if (nextQuarter > 4) {
         nextQuarter = 1
         nextYear++
       }
       
-      // Only add if it's truly in the future
-      if (nextYear > currentYear || (nextYear === currentYear && nextQuarter > currentQuarter)) {
+      const isFuture = nextYear > currentYear || (nextYear === currentYear && nextQuarter > currentQuarter)
+      
+      if (isFuture) {
         quarterly.push({
           period: `Q${nextQuarter} ${nextYear.toString().slice(-2)}`,
           revenue: Math.round(nextRevenue),
@@ -207,9 +216,11 @@ function generateRevenueData(ticker: string): RevenueEstimatesData {
           fiscalPeriod: `Q${nextQuarter}`
         })
         
-        nextRevenue *= 1.02 // 2% quarter-over-quarter growth
+        addedFutureQuarters++
       }
       
+      // Keep growing revenue as we advance quarters, even if we skipped adding it
+      nextRevenue *= 1.02 // 2% quarter-over-quarter growth
       nextQuarter++
     }
     
@@ -273,25 +284,22 @@ function generateRevenueData(ticker: string): RevenueEstimatesData {
   
   for (let yearOffset = -5; yearOffset <= 2; yearOffset++) {
     const year = currentYear + yearOffset
-    const isHistorical = yearOffset < 0 || (yearOffset === 0 && currentQuarter >= 3)
+    const isHistoricalYear = year < currentYear
     
     let yearlyTotal = 0
     
-    // Generate quarterly data
+    // Generate quarterly data (include future quarters as projections)
     for (let q = 1; q <= 4; q++) {
-      // Don't generate future quarters for current year beyond current quarter
-      if (yearOffset === 0 && q > currentQuarter) {
-        continue
-      }
-      
       const quarterRevenue = baseRevenue * (0.9 + Math.random() * 0.3)
       yearlyTotal += quarterRevenue
+      
+      const isHistoricalQuarter = year < currentYear || (year === currentYear && q <= currentQuarter)
       
       quarterly.push({
         period: `Q${q} ${year.toString().slice(-2)}`,
         revenue: quarterRevenue,
         total: quarterRevenue,
-        isHistorical: isHistorical && (yearOffset < 0 || q <= currentQuarter),
+        isHistorical: isHistoricalQuarter,
         fiscalYear: year,
         fiscalPeriod: `Q${q}`
       })
@@ -300,18 +308,16 @@ function generateRevenueData(ticker: string): RevenueEstimatesData {
       baseRevenue *= 1.03
     }
     
-    // Generate yearly data
-    if (yearlyTotal > 0 || !isHistorical) {
-      const yearRevenue = yearlyTotal || baseRevenue * 4
-      yearly.push({
-        period: year.toString(),
-        revenue: yearRevenue,
-        total: yearRevenue,
-        isHistorical,
-        fiscalYear: year,
-        fiscalPeriod: 'FY'
-      })
-    }
+    // Generate yearly data (mark projected when year is current or future)
+    const yearRevenue = yearlyTotal || baseRevenue * 4
+    yearly.push({
+      period: year.toString(),
+      revenue: yearRevenue,
+      total: yearRevenue,
+      isHistorical: isHistoricalYear,
+      fiscalYear: year,
+      fiscalPeriod: 'FY'
+    })
   }
   
   return {
